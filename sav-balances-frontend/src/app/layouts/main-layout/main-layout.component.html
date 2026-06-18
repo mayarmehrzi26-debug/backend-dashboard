@@ -1,0 +1,26 @@
+<div class="app-container">
+  <app-sidebar (toggle)="onSidebarToggle()"></app-sidebar>
+  
+  <main class="main-content" [class.sidebar-collapsed]="isSidebarCollapsed">
+    <!-- Header avec informations utilisateur -->
+    <header class="content-header">
+      <div class="page-title">
+        <h1>{{ pageTitle }}</h1>
+      </div>
+      <div class="user-info">
+        <i class="bi bi-person-circle"></i>
+        <div class="user-details">
+          <span class="user-name">{{ currentUser?.fullName || currentUser?.username }}</span>
+          <span class="user-role">{{ currentUser?.role }}</span>
+        </div>
+        <button class="btn-logout" (click)="logout()" title="Déconnexion">
+          <i class="bi bi-box-arrow-right"></i>
+        </button>
+      </div>
+    </header>
+    
+    <div class="content-body">
+      <router-outlet></router-outlet>
+    </div>
+  </main>
+</div>

@@ -1,0 +1,45 @@
+<aside class="sidebar" [class.collapsed]="isCollapsed">
+  <div class="sidebar-header">
+    <div class="header-content" *ngIf="!isCollapsed">
+      <img src="images/logo4.png" alt="Logo" class="sidebar-logo">
+      <h3>SAV Balance</h3>
+    </div>
+    <div class="header-content collapsed" *ngIf="isCollapsed">
+      <img src="images/logo4.png" alt="Logo" class="sidebar-logo-small">
+    </div>
+    <button (click)="toggleSidebar()" class="toggle-btn">
+      <i class="bi" [class.bi-chevron-left]="!isCollapsed" [class.bi-chevron-right]="isCollapsed"></i>
+    </button>
+  </div>
+  
+  <nav class="sidebar-nav">
+    <!-- Reste du code identique -->
+    <ng-container *ngFor="let item of menuItems">
+      <ng-container *ngIf="!item.submenu">
+        <a [routerLink]="item.path" 
+           routerLinkActive="active"
+           class="nav-item">
+          <i [class]="'bi ' + item.icon"></i>
+          <span *ngIf="!isCollapsed">{{ item.label }}</span>
+        </a>
+      </ng-container>
+      
+      <ng-container *ngIf="item.submenu">
+        <div class="nav-item has-submenu" (click)="toggleSubmenu(item.label)">
+          <i [class]="'bi ' + item.icon"></i>
+          <span *ngIf="!isCollapsed">{{ item.label }}</span>
+          <i *ngIf="!isCollapsed" class="bi" [class.bi-chevron-down]="isSubmenuOpen(item.label)" [class.bi-chevron-right]="!isSubmenuOpen(item.label)"></i>
+        </div>
+        <div class="submenu" *ngIf="!isCollapsed && isSubmenuOpen(item.label)">
+          <a *ngFor="let sub of item.submenu" 
+             [routerLink]="sub.path" 
+             routerLinkActive="active"
+             class="submenu-item">
+            <i [class]="'bi ' + sub.icon"></i>
+            <span>{{ sub.label }}</span>
+          </a>
+        </div>
+      </ng-container>
+    </ng-container>
+  </nav>
+</aside>

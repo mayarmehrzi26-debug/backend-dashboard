@@ -1,0 +1,200 @@
+<div class="balances-container">
+  <div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
+      <h3 class="card-title">Liste des Équipements (Balances)</h3>
+      <button class="btn btn-primary" (click)="openForm()">
+        <i class="bi bi-plus-circle"></i> Nouvel Équipement
+      </button>
+    </div>
+
+    <!-- ==================== BARRE DE RECHERCHE ==================== -->
+    <div class="search-container">
+      <div class="search-box">
+        <i class="bi bi-search search-icon"></i>
+        <input 
+          type="text" 
+          class="search-input" 
+          placeholder="Rechercher par référence, catégorie, description, prix ou notes..."
+          [(ngModel)]="searchTerm"
+          (input)="filterBalances()"
+          (keyup.escape)="clearSearch()"
+        />
+        <button 
+          class="search-clear" 
+          *ngIf="searchTerm.length > 0" 
+          (click)="clearSearch()"
+          title="Effacer la recherche"
+        >
+          <i class="bi bi-x-circle"></i>
+        </button>
+        <span class="search-count" *ngIf="!loading">
+          {{ filteredBalances.length }} équipement{{ filteredBalances.length > 1 ? 's' : '' }}
+          <span *ngIf="searchTerm.length > 0">trouvé(s)</span>
+        </span>
+      </div>
+    </div>
+
+    <div class="table-container">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Référence</th>
+            <th>Catégorie</th>
+            <th>Prix (DT)</th>
+            <th>Description</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- Chargement -->
+          <tr *ngIf="loading">
+            <td colspan="5" class="loading">
+              <i class="bi bi-hourglass-split"></i> Chargement...
+            </td>
+          </tr>
+          
+          <!-- Aucune balance -->
+          <tr *ngIf="!loading && balances.length === 0">
+            <td colspan="5" class="loading">
+              <i class="bi bi-inbox"></i> Aucun équipement
+            </td>
+          </tr>
+          
+          <!-- Aucun résultat de recherche -->
+          <tr *ngIf="!loading && balances.length > 0 && filteredBalances.length === 0">
+            <td colspan="5" class="loading">
+              <i class="bi bi-search"></i> Aucun équipement ne correspond à votre recherche
+              <br>
+              <button class="btn btn-sm btn-secondary" (click)="clearSearch()" style="margin-top: 10px;">
+                <i class="bi bi-x-circle"></i> Effacer la recherche
+              </button>
+            </td>
+          </tr>
+          
+          <!-- Liste des balances filtrées -->
+          <tr *ngFor="let balance of filteredBalances">
+            <td><strong>{{ balance.reference || '-' }}</strong></td>
+            <td>
+              <span class="badge badge-info">{{ balance.categorie || '-' }}</span>
+            </td>
+            <td style="font-weight: bold; color: #1a6d3f;">
+              {{ balance.prix }} DT
+            </td>
+            <td>{{ balance.description | slice:0:50 }}{{ balance.description?.length > 50 ? '...' : '' }}</td>
+            <td>
+              <button class="btn btn-info btn-sm" (click)="viewBalanceDetails(balance)" title="Voir détails">
+                <i class="bi bi-eye"></i>
+              </button>
+              <button class="btn btn-warning btn-sm" (click)="editBalance(balance)" title="Modifier">
+                <i class="bi bi-pencil"></i>
+              </button>
+              <button class="btn btn-danger btn-sm" (click)="deleteBalance(balance.id!)" title="Supprimer">
+                <i class="bi bi-trash"></i>
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Modal Formulaire -->
+  <div class="modal" *ngIf="showForm">
+    <div class="modal-content modal-large">
+      <div class="modal-header">
+        <h3>{{ isEditing ? 'Modifier Équipement' : 'Nouvel Équipement' }}</h3>
+        <button class="close" (click)="closeForm()">&times;</button>
+      </div>
+      <form [formGroup]="balanceForm" (ngSubmit)="saveBalance()">
+        
+        <div class="form-row">
+          <div class="form-group">
+            <label>Référence *</label>
+            <input type="text" class="form-control" formControlName="reference" placeholder="BASC-001">
+          </div>
+          <div class="form-group">
+            <label>Prix (DT) *</label>
+            <input type="number" class="form-control" formControlName="prix" step="0.01" placeholder="0.00">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Catégorie</label>
+            <select class="form-control" formControlName="categorie">
+              <option value="">Sélectionner une catégorie</option>
+              <option *ngFor="let cat of categories" [value]="cat">{{ cat }}</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Description *</label>
+          <textarea class="form-control" formControlName="description" rows="3" placeholder="Description détaillée de l'équipement..."></textarea>
+        </div>
+
+        <div class="form-group">
+          <label>Notes supplémentaires</label>
+          <textarea class="form-control" formControlName="notes" rows="2" placeholder="Notes optionnelles..."></textarea>
+        </div>
+
+        <div style="display: flex; gap: 10px; justify-content: flex-end;">
+          <button type="button" class="btn btn-danger" (click)="closeForm()">Annuler</button>
+          <button type="submit" class="btn btn-primary">Enregistrer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal Détails Balance -->
+  <div class="modal" *ngIf="showDetailsModal && selectedBalance">
+    <div class="modal-content modal-large">
+      <div class="modal-header">
+        <h3><i class="bi bi-speedometer2"></i> Détails Équipement - {{ selectedBalance.reference }}</h3>
+        <button class="close" (click)="closeDetailsModal()">&times;</button>
+      </div>
+      
+      <div class="details-container">
+        <div class="details-section">
+          <h4>Informations générales</h4>
+          <div class="details-grid">
+            <div class="detail-item">
+              <label>Référence :</label>
+              <span><strong>{{ selectedBalance.reference }}</strong></span>
+            </div>
+            <div class="detail-item">
+              <label>Prix :</label>
+              <span style="color: #1a6d3f; font-weight: bold;">{{ selectedBalance.prix }} DT</span>
+            </div>
+            <div class="detail-item">
+              <label>Catégorie :</label>
+              <span>{{ selectedBalance.categorie || '-' }}</span>
+            </div>
+           
+          </div>
+        </div>
+
+        <div class="details-section">
+          <h4>Description</h4>
+          <div class="notes-box">
+            <p>{{ selectedBalance.description || '-' }}</p>
+          </div>
+        </div>
+
+        <div class="details-section" *ngIf="selectedBalance.notes">
+          <h4>Notes</h4>
+          <div class="notes-box">
+            <p>{{ selectedBalance.notes }}</p>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+          <button type="button" class="btn btn-secondary" (click)="closeDetailsModal()">Fermer</button>
+          <button type="button" class="btn btn-primary" (click)="editBalance(selectedBalance); closeDetailsModal()">
+            <i class="bi bi-pencil"></i> Modifier
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,198 @@
+<div class="prestations-container">
+  <div class="card">
+    <div class="card-header">
+      <h3 class="card-title">Catalogue des Prestations</h3>
+      <button class="btn btn-primary" (click)="openForm()">
+        <i class="bi bi-plus-circle"></i> Nouvelle Prestation
+      </button>
+    </div>
+
+    <!-- ==================== BARRE DE RECHERCHE ==================== -->
+    <div class="search-container">
+      <div class="search-box">
+        <i class="bi bi-search search-icon"></i>
+        <input 
+          type="text" 
+          class="search-input" 
+          placeholder="Rechercher par code, nom, description, prix forfait ou prix heure..."
+          [(ngModel)]="searchTerm"
+          (input)="filterPrestations()"
+          (keyup.escape)="clearSearch()"
+        />
+        <button 
+          class="search-clear" 
+          *ngIf="searchTerm.length > 0" 
+          (click)="clearSearch()"
+          title="Effacer la recherche"
+        >
+          <i class="bi bi-x-circle"></i>
+        </button>
+        <span class="search-count" *ngIf="!loading">
+          {{ filteredPrestations.length }} prestation{{ filteredPrestations.length > 1 ? 's' : '' }}
+          <span *ngIf="searchTerm.length > 0">trouvée(s)</span>
+        </span>
+      </div>
+    </div>
+
+    <div class="table-container">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Code</th>
+            <th>Nom</th>
+            <th>Tarif</th>
+            <th>Durée</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngIf="loading">
+            <td colspan="5" class="loading">
+              <i class="bi bi-hourglass-split"></i> Chargement...
+            </td>
+          </tr>
+          <tr *ngIf="!loading && prestations.length === 0">
+            <td colspan="5" class="loading">
+              <i class="bi bi-inbox"></i> Aucune prestation
+            </td>
+          </tr>
+          <tr *ngIf="!loading && prestations.length > 0 && filteredPrestations.length === 0">
+            <td colspan="5" class="loading">
+              <i class="bi bi-search"></i> Aucune prestation ne correspond à votre recherche
+              <br>
+              <button class="btn btn-sm btn-secondary" (click)="clearSearch()" style="margin-top: 10px;">
+                <i class="bi bi-x-circle"></i> Effacer la recherche
+              </button>
+            </td>
+          </tr>
+          <tr *ngFor="let prestation of filteredPrestations">
+            <td><strong>{{ prestation.code }}</strong></td>
+            <td>{{ prestation.nom }}</td>
+            <td class="price-cell">{{ getPrixLabel(prestation) }}</td>
+            <td>{{ prestation.dureeEstimeeHeures }} heure(s)</td>
+            <td>
+              <button class="btn btn-info btn-sm" (click)="viewDetails(prestation)" title="Voir détails">
+                <i class="bi bi-eye"></i>
+              </button>
+              <button class="btn btn-warning btn-sm" (click)="editPrestation(prestation)" title="Modifier">
+                <i class="bi bi-pencil"></i>
+              </button>
+              <button class="btn btn-danger btn-sm" (click)="deletePrestation(prestation.id!)" title="Supprimer">
+                <i class="bi bi-trash"></i>
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <!-- Modal Formulaire Prestation -->
+  <div class="modal" *ngIf="showForm">
+    <div class="modal-content modal-large">
+      <div class="modal-header">
+        <h3>{{ isEditing ? 'Modifier Prestation' : 'Nouvelle Prestation' }}</h3>
+        <button class="close" (click)="closeForm()">&times;</button>
+      </div>
+      
+      <div class="form-group">
+        <label>Nom *</label>
+        <input type="text" class="form-control" [(ngModel)]="newPrestation.nom" placeholder="Ex: Poinçonnage périodique">
+      </div>
+
+      <div class="form-group">
+        <label>Code</label>
+        <input type="text" class="form-control" [(ngModel)]="newPrestation.code" placeholder="Ex: POINCONNAGE">
+        <small class="text-muted">Laissez vide pour génération automatique</small>
+      </div>
+
+      <div class="form-group">
+        <label>Description</label>
+        <textarea class="form-control" rows="3" [(ngModel)]="newPrestation.description" 
+                  placeholder="Description détaillée de la prestation..."></textarea>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Prix forfait (DT)</label>
+          <input type="number" class="form-control" [(ngModel)]="newPrestation.prixForfait" step="0.01" placeholder="Ex: 200">
+          <small class="text-muted">Pour un prix fixe</small>
+        </div>
+        <div class="form-group">
+          <label>Prix à l'heure (DT)</label>
+          <input type="number" class="form-control" [(ngModel)]="newPrestation.prixHeure" step="0.01" placeholder="Ex: 45">
+          <small class="text-muted">Pour un tarif horaire</small>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Durée estimée (heures)</label>
+          <input type="number" class="form-control" [(ngModel)]="newPrestation.dureeEstimeeHeures" min="1">
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-secondary" (click)="closeForm()">Annuler</button>
+        <button class="btn btn-primary" (click)="savePrestation()">Enregistrer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Détails Prestation - MODIFIÉ -->
+  <div class="modal" *ngIf="showDetailsModal">
+    <div class="modal-content modal-large">
+      <div class="modal-header">
+        <h3><i class="bi bi-info-circle"></i> Détails de la prestation</h3>
+        <button class="close" (click)="closeDetailsModal()">&times;</button>
+      </div>
+      
+      <div *ngIf="selectedPrestationDetails" class="details-container">
+        <div class="details-section">
+          <h4><i class="bi bi-tag"></i> Informations générales</h4>
+          <div class="details-grid">
+            <div class="detail-item">
+              <label>Code :</label>
+              <span><strong>{{ selectedPrestationDetails.code || '-' }}</strong></span>
+            </div>
+            <div class="detail-item">
+              <label>Nom :</label>
+              <span><strong>{{ selectedPrestationDetails.nom || '-' }}</strong></span>
+            </div>
+            <div class="detail-item">
+              <label>Durée estimée :</label>
+              <span>{{ selectedPrestationDetails.dureeEstimeeHeures || '-' }} heure(s)</span>
+            </div>
+            <div class="detail-item">
+              <label>Tarif :</label>
+              <span class="price-highlight">{{ getPrixLabel(selectedPrestationDetails) }}</span>
+            </div>
+            <!-- ← AJOUT PRIX À L'HEURE -->
+            <div class="detail-item" *ngIf="selectedPrestationDetails.prixHeure">
+              <label>Prix à l'heure :</label>
+              <span>{{ selectedPrestationDetails.prixHeure }} DT/heure</span>
+            </div>
+            <!-- ← AJOUT PRIX FORFAIT -->
+            <div class="detail-item" *ngIf="selectedPrestationDetails.prixForfait">
+              <label>Prix forfait :</label>
+              <span>{{ selectedPrestationDetails.prixForfait }} DT</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="details-section" *ngIf="selectedPrestationDetails.description">
+          <h4><i class="bi bi-file-text"></i> Description</h4>
+          <div class="description-box">
+            <p>{{ selectedPrestationDetails.description }}</p>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" (click)="closeDetailsModal()">Fermer</button>
+          <button type="button" class="btn btn-warning" (click)="editFromDetails()">
+            <i class="bi bi-pencil"></i> Modifier
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

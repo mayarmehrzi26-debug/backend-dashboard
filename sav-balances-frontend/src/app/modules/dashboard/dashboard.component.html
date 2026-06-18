@@ -1,0 +1,111 @@
+<div class="dashboard">
+  <div *ngIf="errorMessage" class="error-message">
+    <i class="bi bi-exclamation-triangle"></i>
+    {{ errorMessage }}
+    <button class="btn-retry" (click)="refresh()">Réessayer</button>
+  </div>
+
+  <div *ngIf="loading" class="loading-overlay">
+    <i class="bi bi-hourglass-split spin-icon"></i> 
+    <p>Mise à jour des données en cours...</p>
+  </div>
+
+  <div *ngIf="!loading">
+    
+    <div class="stats-grid">
+      <div class="stat-card">
+        <i class="bi bi-people"></i>
+        <h3>{{ stats.totalClients }}</h3>
+        <p>Clients</p>
+      </div>
+      <div class="stat-card stat-externe">
+        <i class="bi bi-globe"></i>
+        <h3>{{ stats.totalInterventionsExternes }}</h3>
+        <p>Interventions Externes</p>
+      </div>
+      <div class="stat-card stat-interne">
+        <i class="bi bi-house"></i>
+        <h3>{{ stats.totalInterventionsInternes }}</h3>
+        <p>Interventions Internes</p>
+      </div>
+      <div class="stat-card">
+        <i class="bi bi-calculator"></i>
+        <h3>{{ stats.totalBalances }}</h3>
+        <p>Balances</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title">Dernières Interventions Externes</h3>
+        <button class="btn-refresh" (click)="refresh()" title="Rafraîchir">
+          <i class="bi bi-arrow-repeat"></i>
+        </button>
+      </div>
+      
+      <div *ngIf="recentInterventionsExternes.length === 0" class="no-data">
+        <i class="bi bi-inbox"></i> Aucune intervention externe trouvée
+      </div>
+      
+      <div *ngIf="recentInterventionsExternes.length > 0" class="table-container">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>N° Ordre</th>
+              <th>Société</th>
+              <th>Réclamation</th>
+              <th>Technicien</th>
+              <th>Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let intervention of recentInterventionsExternes">
+              <td>{{ intervention.numeroOrdre || '-' }}</td>
+              <td>{{ intervention.societe || '-' }}</td>
+              <td>{{ intervention.reclamation || '-' }}</td>
+              <td>{{ intervention.technicien || '-' }}</td>
+              <td>{{ intervention.dateOrdre | date:'dd/MM/yyyy' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title">Dernières Interventions Internes</h3>
+        <button class="btn-refresh" (click)="refresh()" title="Rafraîchir">
+          <i class="bi bi-arrow-repeat"></i>
+        </button>
+      </div>
+      
+      <div *ngIf="recentInterventionsInternes.length === 0" class="no-data">
+        <i class="bi bi-inbox"></i> Aucune intervention interne trouvée
+      </div>
+      
+      <div *ngIf="recentInterventionsInternes.length > 0" class="table-container">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>N° Ordre</th>
+              <th>Équipement</th>
+              <th>Réclamation</th>
+              <th>Technicien</th>
+              <th>Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let intervention of recentInterventionsInternes">
+              <td>{{ intervention.numeroOrdre || '-' }}</td>
+              <td>{{ intervention.bascule || '-' }}</td>
+              <td>{{ intervention.reclamation || '-' }}</td>
+              <td>{{ intervention.technicien || '-' }}</td>
+              <td>{{ intervention.dateOrdre | date:'dd/MM/yyyy' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div>
