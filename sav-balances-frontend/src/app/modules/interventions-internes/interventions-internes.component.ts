@@ -2,11 +2,20 @@
 import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
-import { FormsModule } from '@angular/forms';  // ← AJOUTER
-import { ApiService, Intervention } from '../../core/services/api.service';
+import { FormsModule } from '@angular/forms';
+import { ApiService, Intervention, Client, Balance } from '../../core/services/api.service';
 import { PrestationService } from '../../core/services/prestation.service';
 import { Prestation } from '../../models/prestation.model';
-import { Balance } from '../../core/services/api.service';
+import { 
+  Transaction, 
+  InterventionPaiement,
+  StatutPaiement,
+  getStatutLabel,
+  getStatutClass,
+  getPaymentProgress,
+  calculateMontantRestant,
+  getMethodeLabel
+} from '../../models/transaction.model';
 
 @Component({
   selector: 'app-interventions-internes',
@@ -16,24 +25,48 @@ import { Balance } from '../../core/services/api.service';
   imports: [
     CommonModule, 
     ReactiveFormsModule,
-    FormsModule  // ← AJOUTER
+    FormsModule
   ]
 })
 export class InterventionsInternesComponent implements OnInit {
-  interventions: Intervention[] = [];
-  filteredInterventions: Intervention[] = [];  // ← NOUVEAU
+  interventions: InterventionPaiement[] = [];
+  filteredInterventions: InterventionPaiement[] = [];
+  clients: Client[] = [];
   balances: Balance[] = [];
+  filteredClients: Client[] = [];
   prestations: Prestation[] = [];
   showForm = false;
   showDetailsModal = false;
+  showPaymentModal = false;
   isEditing = false;
-  selectedIntervention: Intervention | null = null;
-  interventionDetails: Intervention | null = null;
+  selectedIntervention: InterventionPaiement | null = null;
+  interventionDetails: InterventionPaiement | null = null;
   interventionForm: FormGroup;
+  paymentForm: FormGroup;
   loading = true;
   detailsLoading = false;
   private dataLoaded = false;
-  searchInterventionsTerm: string = '';  // ← NOUVEAU
+  searchTerm: string = '';
+  searchInterventionsTerm: string = '';
+  selectedPrestationId: number | null = null;
+  selectedBalanceId: number | null = null;
+  prixCalcule: number = 0;
+  
+  balanceMap: Map<number, Balance> = new Map();
+  
+  // Helpers
+  getStatutLabel = getStatutLabel;
+  getStatutClass = getStatutClass;
+  getPaymentProgress = getPaymentProgress;
+  calculateMontantRestant = calculateMontantRestant;
+  getMethodeLabel = getMethodeLabel;
+
+  methodesPaiement = [
+    { value: 'ESPECES', label: '💰 Espèces' },
+    { value: 'CHEQUE', label: '📝 Chèque' },
+    { value: 'VIREMENT', label: '🏦 Virement' },
+    { value: 'CARTE', label: '💳 Carte' }
+  ];
 
   constructor(
     private apiService: ApiService,
@@ -42,27 +75,46 @@ export class InterventionsInternesComponent implements OnInit {
     private prestationService: PrestationService
   ) {
     this.interventionForm = this.createForm();
+    this.paymentForm = this.createPaymentForm();
   }
 
   ngOnInit() {
     this.loadInterventions();
-    this.loadBalances();
+    this.loadClients();
     this.loadPrestations();
+    this.loadBalances();
   }
 
   createForm(): FormGroup {
     return this.fb.group({
       numeroOrdre: [{ value: '', disabled: true }],
       type: [{ value: 'INTERNE', disabled: true }],
-      balanceId: ['', Validators.required],
+      clientId: ['', Validators.required],
+      prestationId: ['', Validators.required],
+      balanceId: [''],
+      societe: [{ value: '', disabled: true }],
+      responsable: [{ value: '', disabled: true }],
+      telephone: [{ value: '', disabled: true }],
+      adresse: [{ value: '', disabled: true }],
+      email: [{ value: '', disabled: true }],
       bascule: [{ value: '', disabled: true }],
       reference: [{ value: '', disabled: true }],
-      prestationId: ['', Validators.required],
       reclamation: [{ value: '', disabled: true }],
-      technicien: ['', Validators.required],
+      technicien: [''],
       dateReclamation: [new Date().toISOString().slice(0, 16)],
       dateOrdre: [new Date().toISOString().slice(0, 16)],
-      rapportIntervention: ['']
+      rapportIntervention: [''],
+      prixEstime: [{ value: '', disabled: true }],
+      prixReel: ['']
+    });
+  }
+
+  createPaymentForm(): FormGroup {
+    return this.fb.group({
+      montant: ['', [Validators.required, Validators.min(0.01)]],
+      methode: ['', Validators.required],
+      reference: [''],
+      notes: ['']
     });
   }
 
@@ -78,6 +130,7 @@ export class InterventionsInternesComponent implements OnInit {
     this.filteredInterventions = this.interventions.filter(interv => {
       return (
         interv.numeroOrdre?.toLowerCase().includes(term) ||
+        interv.societe?.toLowerCase().includes(term) ||
         interv.bascule?.toLowerCase().includes(term) ||
         interv.reclamation?.toLowerCase().includes(term) ||
         interv.technicien?.toLowerCase().includes(term) ||
@@ -93,6 +146,56 @@ export class InterventionsInternesComponent implements OnInit {
     this.cdr.detectChanges();
   }
 
+  // ==================== MÉTHODES CLIENTS ====================
+  
+  loadClients() {
+    this.apiService.getClients().subscribe({
+      next: (data) => {
+        this.clients = data || [];
+        this.filteredClients = [...this.clients];
+        this.cdr.detectChanges();
+      },
+      error: (err) => console.error('Erreur chargement clients:', err)
+    });
+  }
+
+  selectClient(client: Client) {
+    this.interventionForm.patchValue({
+      clientId: client.id,
+      societe: client.societe,
+      responsable: client.responsable,
+      telephone: client.telephone,
+      adresse: client.adresse,
+      email: client.email
+    });
+    this.searchTerm = client.societe;
+    this.filteredClients = [];
+    this.cdr.detectChanges();
+  }
+
+  filterClients(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const value = input.value.toLowerCase();
+    this.searchTerm = value;
+    
+    if (value.length > 0) {
+      this.filteredClients = this.clients.filter(client => 
+        client.societe.toLowerCase().includes(value) || 
+        client.responsable?.toLowerCase().includes(value)
+      );
+    } else {
+      this.filteredClients = [];
+    }
+    this.cdr.detectChanges();
+  }
+
+  // ==================== CORRECTION : Méthode de conversion de statut ====================
+  private convertToStatutPaiement(value: string | undefined): StatutPaiement | undefined {
+    if (!value) return 'EN_ATTENTE';
+    const validStatuses: StatutPaiement[] = ['EN_ATTENTE', 'PARTIEL', 'PAYE', 'EN_RETARD', 'ANNULE'];
+    return validStatuses.includes(value as StatutPaiement) ? value as StatutPaiement : 'EN_ATTENTE';
+  }
+
   loadInterventions() {
     if (this.dataLoaded) return;
     
@@ -101,11 +204,46 @@ export class InterventionsInternesComponent implements OnInit {
     
     this.apiService.getInterventionsByType('INTERNE').subscribe({
       next: (data) => {
-        this.interventions = data || [];
-        this.filteredInterventions = [...this.interventions];  // ← Initialiser
-        this.loading = false;
-        this.dataLoaded = true;
-        this.cdr.detectChanges();
+        const promises = data.map(interv => {
+          return this.apiService.getTransactionsByIntervention(interv.id!).toPromise()
+            .then(transactions => {
+              const totalPaye = (transactions || [])
+                .filter(t => t.statut === 'VALIDE')
+                .reduce((sum, t) => sum + t.montant, 0);
+              
+              const montantTotal = interv.montantTotal || interv.prixEstime || 0;
+              const montantPaye = interv.montantPaye || totalPaye;
+              const montantRestant = interv.montantRestant || (montantTotal - totalPaye);
+              
+              return {
+                ...interv,
+                montantTotal: montantTotal,
+                montantPaye: montantPaye,
+                montantRestant: montantRestant < 0 ? 0 : montantRestant,
+                statutPaiement: this.convertToStatutPaiement(interv.statutPaiement || this.calculateStatut(montantTotal, totalPaye)),
+                transactions: transactions || []
+              } as InterventionPaiement;
+            })
+            .catch(() => {
+              const montantTotal = interv.montantTotal || interv.prixEstime || 0;
+              return {
+                ...interv,
+                montantTotal: montantTotal,
+                montantPaye: interv.montantPaye || 0,
+                montantRestant: interv.montantRestant || montantTotal,
+                statutPaiement: this.convertToStatutPaiement(interv.statutPaiement || 'EN_ATTENTE'),
+                transactions: []
+              } as InterventionPaiement;
+            });
+        });
+        
+        Promise.all(promises).then(results => {
+          this.interventions = results;
+          this.filteredInterventions = [...results];
+          this.loading = false;
+          this.dataLoaded = true;
+          this.cdr.detectChanges();
+        });
       },
       error: (err) => {
         console.error('Erreur:', err);
@@ -117,14 +255,11 @@ export class InterventionsInternesComponent implements OnInit {
     });
   }
 
-  loadBalances() {
-    this.apiService.getBalances().subscribe({
-      next: (data) => {
-        this.balances = data || [];
-        this.cdr.detectChanges();
-      },
-      error: (err) => console.error('Erreur chargement balances:', err)
-    });
+  private calculateStatut(montantTotal: number, totalPaye: number): StatutPaiement {
+    if (montantTotal === 0) return 'PAYE';
+    if (totalPaye === 0) return 'EN_ATTENTE';
+    if (totalPaye >= montantTotal) return 'PAYE';
+    return 'PARTIEL';
   }
 
   loadPrestations() {
@@ -137,40 +272,50 @@ export class InterventionsInternesComponent implements OnInit {
     });
   }
 
-  onBalanceSelect(event: Event) {
-    const select = event.target as HTMLSelectElement;
-    const balanceId = Number(select.value);
-    const selectedBalance = this.balances.find(b => b.id === balanceId);
-    
-    if (selectedBalance) {
-      this.interventionForm.patchValue({
-        balanceId: balanceId,
-        bascule: selectedBalance.categorie || selectedBalance.reference,
-        reference: selectedBalance.reference || ''
-      });
-    } else {
-      this.interventionForm.patchValue({
-        balanceId: null,
-        bascule: '',
-        reference: ''
-      });
-    }
-    this.cdr.detectChanges();
+  loadBalances() {
+    this.apiService.getBalances().subscribe({
+      next: (data) => {
+        this.balances = data || [];
+        this.balanceMap = new Map();
+        this.balances.forEach(balance => {
+          if (balance.id) {
+            this.balanceMap.set(balance.id, balance);
+          }
+        });
+        this.cdr.detectChanges();
+      },
+      error: (err) => console.error('Erreur chargement balances:', err)
+    });
   }
 
-  onPrestationSelect(event: Event) {
-    const select = event.target as HTMLSelectElement;
-    const prestationId = Number(select.value);
-    const selectedPrestation = this.prestations.find(p => p.id === prestationId);
-    
-    if (selectedPrestation) {
-      this.interventionForm.patchValue({
-        prestationId: prestationId,
-        reclamation: selectedPrestation.nom
-      });
-    }
-    this.cdr.detectChanges();
+  // ==================== MÉTHODES DE BALANCE ====================
+
+  getBalanceName(balanceId: number | undefined): string {
+    if (!balanceId) return '-';
+    const balance = this.balanceMap.get(balanceId);
+    return balance ? balance.categorie || '-' : '-';
   }
+
+  getBalanceReference(balanceId: number | undefined): string {
+    if (!balanceId) return '-';
+    const balance = this.balanceMap.get(balanceId);
+    return balance ? balance.reference || '-' : '-';
+  }
+
+  getBalanceDetails(balanceId: number | undefined): string {
+    if (!balanceId) return '-';
+    const balance = this.balanceMap.get(balanceId);
+    if (!balance) return '-';
+    return `${balance.reference} - ${balance.categorie} (${balance.prix} DT)`;
+  }
+
+  getBalanceDisplay(balanceId: number | undefined): string {
+    if (!balanceId) return '-';
+    const balance = this.balanceMap.get(balanceId);
+    return balance ? balance.categorie || balance.reference || '-' : '-';
+  }
+
+  // ==================== MÉTHODES DE FORMULAIRE ====================
 
   generateNumeroOrdre(): string {
     const date = new Date();
@@ -181,25 +326,171 @@ export class InterventionsInternesComponent implements OnInit {
     return `INT-${random}`;
   }
 
+  onPrestationSelect(event: Event) {
+    const select = event.target as HTMLSelectElement;
+    const prestationId = Number(select.value);
+    this.selectedPrestationId = prestationId;
+    
+    const selectedPrestation = this.prestations.find(p => p.id === prestationId);
+    if (selectedPrestation) {
+      if (selectedPrestation.prixForfait) {
+        this.prixCalcule = selectedPrestation.prixForfait;
+      } else if (selectedPrestation.prixHeure && selectedPrestation.dureeEstimeeHeures) {
+        this.prixCalcule = selectedPrestation.prixHeure * selectedPrestation.dureeEstimeeHeures;
+      }
+      this.interventionForm.patchValue({
+        prestationId: prestationId,
+        prixEstime: this.prixCalcule,
+        reclamation: selectedPrestation.nom
+      });
+    }
+    this.cdr.detectChanges();
+  }
+
+  onBalanceSelect(event: Event) {
+    const select = event.target as HTMLSelectElement;
+    const balanceId = Number(select.value);
+    this.selectedBalanceId = balanceId;
+    
+    const selectedBalance = this.balances.find(b => b.id === balanceId);
+    if (selectedBalance) {
+      this.interventionForm.patchValue({
+        balanceId: balanceId,
+        bascule: selectedBalance.categorie || selectedBalance.reference,
+        reference: selectedBalance.reference || '-'
+      });
+    }
+    this.cdr.detectChanges();
+  }
+
+  // ==================== MÉTHODES PAIEMENT ====================
+
+  openPaymentModal(intervention: InterventionPaiement | null) {
+    if (!intervention) return;
+    this.selectedIntervention = intervention;
+    this.paymentForm.reset({
+      montant: '',
+      methode: '',
+      reference: '',
+      notes: ''
+    });
+    this.showPaymentModal = true;
+    this.cdr.detectChanges();
+  }
+
+  closePaymentModal() {
+    this.showPaymentModal = false;
+    this.selectedIntervention = null;
+    this.cdr.detectChanges();
+  }
+
+  savePayment() {
+    if (this.paymentForm.invalid) {
+      alert('Veuillez remplir tous les champs obligatoires');
+      return;
+    }
+
+    if (!this.selectedIntervention || !this.selectedIntervention.id) return;
+
+    const formValue = this.paymentForm.value;
+    const transaction: Transaction = {
+      montant: formValue.montant,
+      methode: formValue.methode,
+      reference: formValue.reference || '',
+      notes: formValue.notes || '',
+      statut: 'VALIDE',
+      dateTransaction: new Date().toISOString()
+    };
+
+    this.loading = true;
+    this.cdr.detectChanges();
+
+    this.apiService.ajouterPaiement(this.selectedIntervention.id, transaction).subscribe({
+      next: () => {
+        this.dataLoaded = false;
+        this.loadInterventions();
+        this.loading = false;
+        this.closePaymentModal();
+        alert('✅ Paiement enregistré avec succès');
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        console.error('Erreur:', err);
+        this.loading = false;
+        this.cdr.detectChanges();
+        alert('❌ Erreur: ' + (err.error || 'Impossible d\'enregistrer le paiement'));
+      }
+    });
+  }
+
+  loadTransactions(interventionId: number) {
+    this.apiService.getTransactionsByIntervention(interventionId).subscribe({
+      next: (transactions) => {
+        if (this.interventionDetails) {
+          this.interventionDetails.transactions = transactions;
+          
+          const totalPaye = transactions
+            .filter(t => t.statut === 'VALIDE')
+            .reduce((sum, t) => sum + t.montant, 0);
+          
+          const montantTotal = this.interventionDetails.montantTotal || 
+                              this.interventionDetails.prixEstime || 0;
+          
+          this.interventionDetails.montantPaye = totalPaye;
+          this.interventionDetails.montantRestant = Math.max(0, montantTotal - totalPaye);
+          
+          this.interventionDetails.statutPaiement = this.convertToStatutPaiement(
+            this.calculateStatut(montantTotal, totalPaye)
+          );
+          
+          this.cdr.detectChanges();
+        }
+      },
+      error: (err) => console.error('Erreur chargement transactions:', err)
+    });
+  }
+
+  getMontantRestant(intervention: InterventionPaiement | null): number {
+    if (!intervention) return 0;
+    const total = intervention.montantTotal || intervention.prixEstime || 0;
+    const paye = intervention.montantPaye || 0;
+    return Math.max(0, total - paye);
+  }
+
+  // ==================== MÉTHODES DE MODAL ====================
+
   openForm() {
     this.showForm = true;
     this.isEditing = false;
     this.selectedIntervention = null;
+    this.searchTerm = '';
+    this.filteredClients = [];
+    this.selectedPrestationId = null;
+    this.selectedBalanceId = null;
+    this.prixCalcule = 0;
     
     const newNumeroOrdre = this.generateNumeroOrdre();
     
     this.interventionForm.reset({
       numeroOrdre: newNumeroOrdre,
       type: 'INTERNE',
+      clientId: '',
+      prestationId: '',
       balanceId: '',
+      societe: '',
+      responsable: '',
+      telephone: '',
+      adresse: '',
+      email: '',
       bascule: '',
       reference: '',
-      prestationId: '',
       reclamation: '',
       technicien: '',
       dateReclamation: new Date().toISOString().slice(0, 16),
       dateOrdre: new Date().toISOString().slice(0, 16),
-      rapportIntervention: ''
+      rapportIntervention: '',
+      prixEstime: '',
+      prixReel: ''
     });
     this.cdr.detectChanges();
   }
@@ -207,35 +498,90 @@ export class InterventionsInternesComponent implements OnInit {
   closeForm() {
     this.showForm = false;
     this.interventionForm.reset();
+    this.filteredClients = [];
+    this.searchTerm = '';
+    this.selectedPrestationId = null;
+    this.selectedBalanceId = null;
+    this.prixCalcule = 0;
     this.cdr.detectChanges();
   }
 
-  editIntervention(intervention: Intervention) {
+  viewInterventionDetails(intervention: InterventionPaiement) {
+    this.detailsLoading = true;
+    this.showDetailsModal = true;
+    this.cdr.detectChanges();
+    
+    this.apiService.getIntervention(intervention.id!).subscribe({
+      next: (data) => {
+        this.interventionDetails = {
+          ...data,
+          montantTotal: data.montantTotal || data.prixEstime || 0,
+          montantPaye: data.montantPaye || 0,
+          montantRestant: data.montantRestant || 0,
+          statutPaiement: this.convertToStatutPaiement(data.statutPaiement || 'EN_ATTENTE')
+        };
+        if (intervention.id) {
+          this.loadTransactions(intervention.id);
+        }
+        this.detailsLoading = false;
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        console.error('Erreur chargement détails:', err);
+        this.detailsLoading = false;
+        this.cdr.detectChanges();
+        alert('Erreur lors du chargement des détails');
+      }
+    });
+  }
+
+  closeDetailsModal() {
+    this.showDetailsModal = false;
+    this.interventionDetails = null;
+    this.cdr.detectChanges();
+  }
+
+  editIntervention(intervention: InterventionPaiement) {
     this.isEditing = true;
     this.selectedIntervention = intervention;
     
-    let balance = null;
-    if (intervention.bascule) {
-      balance = this.balances.find(b => 
-        b.categorie === intervention.bascule || 
-        intervention.bascule.includes(b.reference || '')
-      );
-    }
+    const client = this.clients.find(c => c.societe === intervention.societe);
     const prestation = this.prestations.find(p => p.nom === intervention.reclamation);
+    const balance = this.balances.find(b => intervention.bascule?.includes(b.reference || ''));
+    
+    if (prestation) {
+      this.selectedPrestationId = prestation.id || null;
+      if (prestation.prixForfait) {
+        this.prixCalcule = prestation.prixForfait;
+      } else if (prestation.prixHeure && prestation.dureeEstimeeHeures) {
+        this.prixCalcule = prestation.prixHeure * prestation.dureeEstimeeHeures;
+      }
+    }
+    
+    this.selectedBalanceId = balance?.id || null;
     
     this.interventionForm.patchValue({
       numeroOrdre: intervention.numeroOrdre,
       type: intervention.type,
-      balanceId: balance?.id,
-      bascule: intervention.bascule,
-      reference: intervention.reference || balance?.reference || '',
+      clientId: client?.id,
       prestationId: prestation?.id,
+      balanceId: balance?.id,
+      societe: intervention.societe,
+      responsable: intervention.responsable,
+      telephone: intervention.telephone,
+      adresse: intervention.adresse,
+      email: intervention.email,
+      bascule: intervention.bascule,
+      reference: balance?.reference || '-',
       reclamation: intervention.reclamation,
       technicien: intervention.technicien,
       dateReclamation: intervention.dateReclamation?.slice(0, 16),
       dateOrdre: intervention.dateOrdre?.slice(0, 16),
-      rapportIntervention: intervention.rapportIntervention
+      rapportIntervention: intervention.rapportIntervention,
+      prixEstime: intervention.prixEstime,
+      prixReel: intervention.prixReel
     });
+    this.searchTerm = intervention.societe;
     this.showForm = true;
     this.cdr.detectChanges();
   }
@@ -250,19 +596,20 @@ export class InterventionsInternesComponent implements OnInit {
     const intervention: Intervention = {
       numeroOrdre: formValue.numeroOrdre,
       type: 'INTERNE',
+      societe: formValue.societe,
       bascule: formValue.bascule,
       reference: formValue.reference || '',
+      responsable: formValue.responsable,
+      adresse: formValue.adresse,
+      telephone: formValue.telephone,
+      email: formValue.email,
       reclamation: formValue.reclamation,
       technicien: formValue.technicien,
       dateReclamation: formValue.dateReclamation,
       dateOrdre: formValue.dateOrdre,
       rapportIntervention: formValue.rapportIntervention,
-      societe: 'Interne',
-      responsable: 'Interne',
-      telephone: '',
-      adresse: '',
-      email: '',
-      prestationId: formValue.prestationId
+      prixEstime: this.prixCalcule,
+      prixReel: formValue.prixReel
     };
 
     this.loading = true;
@@ -343,43 +690,10 @@ export class InterventionsInternesComponent implements OnInit {
   refresh() {
     this.dataLoaded = false;
     this.loadInterventions();
-    this.loadBalances();
     this.loadPrestations();
+    this.loadBalances();
   }
-
-  viewInterventionDetails(intervention: Intervention) {
-    this.detailsLoading = true;
-    this.showDetailsModal = true;
-    this.cdr.detectChanges();
-    
-    this.apiService.getIntervention(intervention.id!).subscribe({
-      next: (data) => {
-        this.interventionDetails = {
-          ...data,
-          reference: data.reference || intervention.reference || '-'
-        };
-        this.detailsLoading = false;
-        this.cdr.detectChanges();
-      },
-      error: (err) => {
-        console.error('Erreur chargement détails:', err);
-        this.interventionDetails = {
-          ...intervention,
-          reference: intervention.reference || '-'
-        };
-        this.detailsLoading = false;
-        this.cdr.detectChanges();
-        alert('Erreur lors du chargement des détails');
-      }
-    });
-  }
-
-  closeDetailsModal() {
-    this.showDetailsModal = false;
-    this.interventionDetails = null;
-    this.cdr.detectChanges();
-  }
-
+  
   formatDate(date: string | undefined | null): string {
     if (!date) return 'Non renseigné';
     try {
@@ -393,5 +707,25 @@ export class InterventionsInternesComponent implements OnInit {
     } catch (e) {
       return 'Date invalide';
     }
+  }
+
+  refreshIntervention(interventionId: number): void {
+    this.apiService.getIntervention(interventionId).subscribe({
+      next: (updatedIntervention) => {
+        const index = this.interventions.findIndex(i => i.id === updatedIntervention.id);
+        if (index !== -1) {
+          this.interventions[index] = {
+            ...updatedIntervention,
+            montantTotal: updatedIntervention.montantTotal || updatedIntervention.prixEstime || 0,
+            montantPaye: updatedIntervention.montantPaye || 0,
+            montantRestant: updatedIntervention.montantRestant || 0,
+            statutPaiement: this.convertToStatutPaiement(updatedIntervention.statutPaiement || 'EN_ATTENTE')
+          };
+          this.filteredInterventions = [...this.interventions];
+          this.cdr.detectChanges();
+        }
+      },
+      error: (err) => console.error('Erreur refresh:', err)
+    });
   }
 }

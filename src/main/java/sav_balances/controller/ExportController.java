@@ -87,7 +87,7 @@ public class ExportController {
         }
     }
     
-    // Export PDF Interne - CORRIGÉ
+    // Export PDF Interne - MODIFIÉ pour inclure la société
     @GetMapping("/interne/{interventionId}/pdf")
     public ResponseEntity<ByteArrayResource> exportFormulaireInternePdf(@PathVariable Long interventionId) {
         try {
@@ -98,9 +98,9 @@ public class ExportController {
             
             byte[] pdfBytes = pdfExportInterneService.generateFormulaireInternePdf(
                 intervention.getNumeroOrdre(),
+                intervention.getSociete(),  // ← AJOUT SOCIÉTÉ
                 intervention.getBascule(),
-                intervention.getReference() != null ? intervention.getReference() : "",  // RÉFÉRENCE
-                intervention.getTechnicien(),
+                intervention.getReference() != null ? intervention.getReference() : "",
                 intervention.getDateOrdre() != null ? intervention.getDateOrdre().toString() : "",
                 intervention.getReclamation(),
                 intervention.getRapportIntervention()

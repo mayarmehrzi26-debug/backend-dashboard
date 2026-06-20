@@ -17,10 +17,10 @@ public class PdfExportInterneService {
     private static final Color COLOR_SECONDARY = new Color(26, 92, 56);
     private static final Color COLOR_BG_SECTION = new Color(235, 245, 238);
 
-    // MÉTHODE MODIFIÉE - Ajout du paramètre reference
-    public byte[] generateFormulaireInternePdf(String numeroOrdre, String equipement,
-                                                String reference,  // ← NOUVEAU PARAMÈTRE
-                                                String technicien, String dateIntervention,
+    public byte[] generateFormulaireInternePdf(String numeroOrdre, String societe,
+                                                String equipement,
+                                                String reference,
+                                                 String dateIntervention,
                                                 String reclamation,
                                                 String rapportIntervention) {
         
@@ -39,7 +39,7 @@ public class PdfExportInterneService {
             Font valueFont = new Font(Font.HELVETICA, 10, Font.NORMAL);
             Font smallFont = new Font(Font.HELVETICA, 8, Font.NORMAL);
             Font reclamationFont = new Font(Font.HELVETICA, 10, Font.ITALIC, Color.DARK_GRAY);
-            Font referenceFont = new Font(Font.HELVETICA, 10, Font.ITALIC, new Color(80, 80, 80));  // ← NOUVELLE POLICE
+            Font referenceFont = new Font(Font.HELVETICA, 10, Font.ITALIC, new Color(80, 80, 80));
             
             // En-tête
             PdfPTable headerTable = new PdfPTable(2);
@@ -118,15 +118,15 @@ public class PdfExportInterneService {
             title.setSpacingAfter(12);
             document.add(title);
             
-            // Tableau des informations - AJOUT DE LA RÉFÉRENCE
+            // Tableau des informations
             PdfPTable mainTable = new PdfPTable(2);
             mainTable.setWidthPercentage(100);
             mainTable.setWidths(new float[]{35, 65});
             
             addSectionTitle(mainTable, "INFORMATIONS DE L'INTERVENTION", COLOR_PRIMARY, 2);
+            addRow(mainTable, "Société :", getValue(societe), labelFont, valueFont);
             addRow(mainTable, "Équipement :", getValue(equipement), labelFont, valueFont);
-            addRow(mainTable, "Référence :", getValue(reference), labelFont, referenceFont);  // ← AJOUT RÉFÉRENCE
-            addRow(mainTable, "Technicien :", getValue(technicien), labelFont, valueFont);
+            addRow(mainTable, "Référence :", getValue(reference), labelFont, referenceFont);
             addRow(mainTable, "Date d'intervention :", formatDate(dateIntervention), labelFont, valueFont);
             
             // Ligne RÉCLAMATION
@@ -148,10 +148,10 @@ public class PdfExportInterneService {
             
             document.add(mainTable);
             
-            // Rapport
+            // ========== RAPPORT - TAILLE RÉDUITE ==========
             Paragraph rapportTitle = new Paragraph("RAPPORT D'INTERVENTION", subTitleFont);
-            rapportTitle.setSpacingBefore(10);
-            rapportTitle.setSpacingAfter(8);
+            rapportTitle.setSpacingBefore(8);    // Réduit de 10 à 8
+            rapportTitle.setSpacingAfter(6);     // Réduit de 8 à 6
             rapportTitle.setAlignment(Element.ALIGN_CENTER);
             document.add(rapportTitle);
             
@@ -161,8 +161,8 @@ public class PdfExportInterneService {
             PdfPCell rapportCell = new PdfPCell();
             rapportCell.setBorder(Rectangle.BOX);
             rapportCell.setBorderWidth(1.5f);
-            rapportCell.setPadding(12);
-            rapportCell.setMinimumHeight(120);
+            rapportCell.setPadding(10);          // Réduit de 12 à 10
+            rapportCell.setMinimumHeight(90);    // Réduit de 120 à 90
             
             String rapport = rapportIntervention != null && !rapportIntervention.isEmpty() 
                             ? rapportIntervention : "Aucun rapport fourni";
@@ -174,10 +174,10 @@ public class PdfExportInterneService {
             rapportTable.addCell(rapportCell);
             document.add(rapportTable);
             
-            // Notes
+            // ========== NOTES - ESPACE RÉDUIT ==========
             Paragraph notesTitle = new Paragraph("NOTES ET OBSERVATIONS", subTitleFont);
-            notesTitle.setSpacingBefore(10);
-            notesTitle.setSpacingAfter(8);
+            notesTitle.setSpacingBefore(10);      // Réduit de 10 à 8
+            notesTitle.setSpacingAfter(8);       // Réduit de 8 à 6
             document.add(notesTitle);
             
             PdfPTable notesTable = new PdfPTable(1);
@@ -186,10 +186,10 @@ public class PdfExportInterneService {
             PdfPCell notesCell = new PdfPCell();
             notesCell.setBorder(Rectangle.BOX);
             notesCell.setBorderWidth(1.5f);
-            notesCell.setPadding(8);
-            notesCell.setMinimumHeight(80);
+            notesCell.setPadding(8);             // Réduit de 8 à 6
+            notesCell.setMinimumHeight(80);      // Réduit de 80 à 60
             
-            for (int i = 0; i < 4; i++) {
+            for (int i = 0; i < 3; i++) {        // Réduit de 4 à 3 lignes
                 PdfPTable lineTable = new PdfPTable(1);
                 lineTable.setWidthPercentage(100);
                 
@@ -197,7 +197,7 @@ public class PdfExportInterneService {
                 lineCell.setBorder(Rectangle.BOTTOM);
                 lineCell.setBorderWidthBottom(0.7f);
                 lineCell.setBorderColorBottom(Color.GRAY);
-                lineCell.setFixedHeight(20);
+                lineCell.setFixedHeight(18);     // Réduit de 20 à 18
                 lineCell.setPadding(0);
                 
                 lineTable.addCell(lineCell);
@@ -207,10 +207,10 @@ public class PdfExportInterneService {
             notesTable.addCell(notesCell);
             document.add(notesTable);
             
-            // Signature
+            // ========== SIGNATURE - ESPACE RÉDUIT ==========
             Paragraph signatureTitle = new Paragraph("VALIDATION", subTitleFont);
-            signatureTitle.setSpacingBefore(25);
-            signatureTitle.setSpacingAfter(20);
+            signatureTitle.setSpacingBefore(20);  // Réduit de 25 à 20
+            signatureTitle.setSpacingAfter(15);   // Réduit de 20 à 15
             signatureTitle.setAlignment(Element.ALIGN_CENTER);
             document.add(signatureTitle);
             
@@ -222,20 +222,18 @@ public class PdfExportInterneService {
             PdfPCell techSignCell = new PdfPCell();
             techSignCell.setBorder(Rectangle.BOX);
             techSignCell.setBorderWidth(1.5f);
-            techSignCell.setPadding(25);
+            techSignCell.setPadding(20);          // Réduit de 25 à 20
             techSignCell.setBackgroundColor(new Color(250, 252, 250));
             
             Paragraph techSignTitle = new Paragraph("POUR LE TECHNICIEN", new Font(Font.HELVETICA, 11, Font.BOLD, COLOR_PRIMARY));
             techSignTitle.setAlignment(Element.ALIGN_CENTER);
-            techSignTitle.setSpacingAfter(25);
+            techSignTitle.setSpacingAfter(20);    // Réduit de 25 à 20
             techSignCell.addElement(techSignTitle);
             
-            Paragraph techName = new Paragraph("Nom du technicien : " + getValue(technicien), valueFont);
-            techName.setSpacingAfter(25);
-            techSignCell.addElement(techName);
+           
             
             Paragraph techSignature = new Paragraph("Signature : _________________________", valueFont);
-            techSignature.setSpacingAfter(25);
+            techSignature.setSpacingAfter(20);    // Réduit de 25 à 20
             techSignCell.addElement(techSignature);
             
             Paragraph techDate = new Paragraph("Date : ______________________________", valueFont);
@@ -245,12 +243,12 @@ public class PdfExportInterneService {
             PdfPCell cachetCell = new PdfPCell();
             cachetCell.setBorder(Rectangle.BOX);
             cachetCell.setBorderWidth(1.5f);
-            cachetCell.setPadding(25);
+            cachetCell.setPadding(20);            // Réduit de 25 à 20
             cachetCell.setBackgroundColor(new Color(250, 252, 250));
             
             Paragraph cachetTitle = new Paragraph("CACHET DE LA SOCIÉTÉ", new Font(Font.HELVETICA, 11, Font.BOLD, COLOR_PRIMARY));
             cachetTitle.setAlignment(Element.ALIGN_CENTER);
-            cachetTitle.setSpacingAfter(25);
+            cachetTitle.setSpacingAfter(20);      // Réduit de 25 à 20
             cachetCell.addElement(cachetTitle);
             
             PdfPTable cachetBox = new PdfPTable(1);
@@ -260,8 +258,8 @@ public class PdfExportInterneService {
             cachetInnerCell.setBorder(Rectangle.BOX);
             cachetInnerCell.setBorderWidth(1f);
             cachetInnerCell.setBorderColor(new Color(150, 165, 155));
-            cachetInnerCell.setMinimumHeight(90);
-            cachetInnerCell.setPadding(15);
+            cachetInnerCell.setMinimumHeight(70); // Réduit de 90 à 70
+            cachetInnerCell.setPadding(12);       // Réduit de 15 à 12
             
             Paragraph cachetSpace = new Paragraph("Espace réservé au cachet", new Font(Font.HELVETICA, 8, Font.ITALIC, Color.GRAY));
             cachetSpace.setAlignment(Element.ALIGN_CENTER);
@@ -280,7 +278,7 @@ public class PdfExportInterneService {
                 new Font(Font.HELVETICA, 7, Font.ITALIC)
             );
             footer.setAlignment(Element.ALIGN_CENTER);
-            footer.setSpacingBefore(15);
+            footer.setSpacingBefore(5);
             document.add(footer);
             
             document.close();

@@ -514,3 +514,164 @@ textarea.form-control {
     font-size: 0.9rem;
   }
 }
+/* Ajouter à la fin du fichier interventions-internes.component.css */
+
+/* Payment styles */
+.payment-progress-small {
+  width: 60px;
+  height: 4px;
+  background: #e9ecef;
+  border-radius: 2px;
+  margin: 4px 0;
+  overflow: hidden;
+}
+
+.progress-bar-small {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+.progress-bar-small.progress-danger {
+  background: #dc3545;
+}
+
+.progress-bar-small.progress-warning {
+  background: #ffc107;
+}
+
+.progress-bar-small.progress-success {
+  background: #28a745;
+}
+
+.payment-amounts {
+  font-size: 0.75rem;
+  display: flex;
+  gap: 3px;
+  align-items: center;
+}
+
+.payment-amounts .paid {
+  color: #28a745;
+  font-weight: 600;
+}
+
+.payment-amounts .total {
+  color: #6c757d;
+}
+
+.payment-amounts .separator {
+  color: #dee2e6;
+}
+
+.payment-summary {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 15px;
+  margin: 15px 0;
+}
+
+.payment-stat {
+  background: #f8faf8;
+  border-radius: 10px;
+  padding: 12px;
+  text-align: center;
+}
+
+.payment-stat .label {
+  display: block;
+  font-size: 0.7rem;
+  color: #6c757d;
+  margin-bottom: 5px;
+}
+
+.payment-stat .value {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #0d4d2d;
+}
+
+.payment-stat .value.text-success {
+  color: #28a745;
+}
+
+.payment-stat .value.text-danger {
+  color: #dc3545;
+}
+
+.payment-progress {
+  background: #e9ecef;
+  border-radius: 10px;
+  height: 24px;
+  margin: 15px 0;
+  overflow: hidden;
+  position: relative;
+}
+
+.payment-progress .progress-bar {
+  height: 100%;
+  border-radius: 10px;
+  transition: width 0.8s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: white;
+}
+
+.payment-progress .progress-bar.progress-danger {
+  background: linear-gradient(90deg, #dc3545, #e74c3c);
+}
+
+.payment-progress .progress-bar.progress-warning {
+  background: linear-gradient(90deg, #ffc107, #fd7e14);
+}
+
+.payment-progress .progress-bar.progress-success {
+  background: linear-gradient(90deg, #28a745, #20c997);
+}
+
+.payment-history {
+  margin-top: 15px;
+}
+
+.payment-history h5 {
+  color: #0d4d2d;
+  margin: 0;
+}
+
+.payment-history .table-sm {
+  font-size: 0.85rem;
+}
+
+.payment-history .table-sm th {
+  background: #f8faf8;
+  color: #0d4d2d;
+  padding: 8px;
+}
+
+.payment-history .table-sm td {
+  padding: 8px;
+  vertical-align: middle;
+}
+
+.no-data {
+  text-align: center;
+  padding: 20px;
+  color: #6c757d;
+  font-size: 0.9rem;
+}
+
+.no-data i {
+  font-size: 1.5rem;
+  margin-bottom: 5px;
+  display: block;
+}
+
+@media (max-width: 768px) {
+  .payment-summary {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+}
