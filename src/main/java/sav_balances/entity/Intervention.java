@@ -35,6 +35,15 @@ public class Intervention {
     private Double prixReel;
     private String type;
 
+    // ========== NOUVEAUX CHAMPS POUR LE PROCESSUS INTERNE ==========
+    
+    @Enumerated(EnumType.STRING)
+    private StatutIntervention statutIntervention = StatutIntervention.EN_ATTENTE;
+    
+    private Double prixPropose;
+    private LocalDateTime dateDiagnostic;
+    private LocalDateTime dateRecuperation;
+
     // Champs paiement
     private Double montantTotal = 0.0;
     private Double montantPaye = 0.0;
@@ -48,6 +57,15 @@ public class Intervention {
     @OneToMany(mappedBy = "intervention", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Transaction> transactions;
 
+    // ========== ENUMS ==========
+    
+    public enum StatutIntervention {
+        EN_ATTENTE,    // 🔵 En attente de diagnostic
+        CONFIRME,      // 🟡 Devis accepté - Réparation en cours
+        ANNULE,        // 🔴 Devis refusé - Intervention annulée
+        TERMINE        // 🟢 Réparation terminée - Prêt pour le client
+    }
+
     public enum StatutPaiement {
         EN_ATTENTE, PARTIEL, PAYE, EN_RETARD, ANNULE
     }
@@ -57,9 +75,11 @@ public class Intervention {
         this.montantPaye = 0.0;
         this.montantRestant = 0.0;
         this.statutPaiement = StatutPaiement.EN_ATTENTE;
+        this.statutIntervention = StatutIntervention.EN_ATTENTE;
     }
 
-    // Getters et Setters
+    // ========== GETTERS ET SETTERS ==========
+    
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
@@ -113,6 +133,20 @@ public class Intervention {
     
     public String getType() { return type; }
     public void setType(String type) { this.type = type; }
+
+    // ========== GETTERS/SETTERS NOUVEAUX ==========
+    
+    public StatutIntervention getStatutIntervention() { return statutIntervention; }
+    public void setStatutIntervention(StatutIntervention statutIntervention) { this.statutIntervention = statutIntervention; }
+
+    public Double getPrixPropose() { return prixPropose; }
+    public void setPrixPropose(Double prixPropose) { this.prixPropose = prixPropose; }
+
+    public LocalDateTime getDateDiagnostic() { return dateDiagnostic; }
+    public void setDateDiagnostic(LocalDateTime dateDiagnostic) { this.dateDiagnostic = dateDiagnostic; }
+
+    public LocalDateTime getDateRecuperation() { return dateRecuperation; }
+    public void setDateRecuperation(LocalDateTime dateRecuperation) { this.dateRecuperation = dateRecuperation; }
 
     // Getters et Setters paiement
     public Double getMontantTotal() { return montantTotal; }

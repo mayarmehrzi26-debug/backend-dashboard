@@ -87,7 +87,7 @@ public class ExportController {
         }
     }
     
-    // Export PDF Interne - MODIFIÉ pour inclure la société
+    // Export PDF Interne - Bon de Reçue (2 parties)
     @GetMapping("/interne/{interventionId}/pdf")
     public ResponseEntity<ByteArrayResource> exportFormulaireInternePdf(@PathVariable Long interventionId) {
         try {
@@ -98,7 +98,7 @@ public class ExportController {
             
             byte[] pdfBytes = pdfExportInterneService.generateFormulaireInternePdf(
                 intervention.getNumeroOrdre(),
-                intervention.getSociete(),  // ← AJOUT SOCIÉTÉ
+                intervention.getSociete(),
                 intervention.getBascule(),
                 intervention.getReference() != null ? intervention.getReference() : "",
                 intervention.getDateOrdre() != null ? intervention.getDateOrdre().toString() : "",
@@ -110,7 +110,7 @@ public class ExportController {
             
             return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, 
-                    "attachment; filename=intervention_interne_" + interventionId + ".pdf")
+                    "attachment; filename=bon_reçue_interne_" + interventionId + ".pdf")
                 .contentType(MediaType.APPLICATION_PDF)
                 .body(resource);
         } catch (Exception e) {
@@ -118,7 +118,39 @@ public class ExportController {
             return ResponseEntity.internalServerError().build();
         }
     }
-    
+
+    // ========== BON DE RÉCUPÉRATION (CORRIGÉ) ==========
+    @GetMapping("/interne/{interventionId}/recuperation")
+    public ResponseEntity<ByteArrayResource> exportBonRecuperationPdf(@PathVariable Long interventionId) {
+        try {
+            Intervention intervention = interventionService.getById(interventionId);
+            if (intervention == null) {
+                return ResponseEntity.notFound().build();
+            }
+            
+            byte[] pdfBytes = pdfExportInterneService.generateBonRecuperationPdf(
+                intervention.getNumeroOrdre(),
+                intervention.getSociete(),
+                intervention.getBascule(),
+                intervention.getReference() != null ? intervention.getReference() : "",
+                intervention.getMontantTotal() != null ? intervention.getMontantTotal() : 0.0,
+                intervention.getDateOrdre() != null ? intervention.getDateOrdre().toString() : "",
+                java.time.LocalDateTime.now().toString(),
+                intervention.getReclamation() != null ? intervention.getReclamation() : ""
+            );
+            
+            ByteArrayResource resource = new ByteArrayResource(pdfBytes);
+            
+            return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, 
+                    "attachment; filename=bon_recuperation_" + interventionId + ".pdf")
+                .contentType(MediaType.APPLICATION_PDF)
+                .body(resource);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.internalServerError().build();
+        }
+    }
     private String generateTxtContent(Intervention i) {
         StringBuilder sb = new StringBuilder();
         sb.append("STE BALANCE NAFIS\n\n");

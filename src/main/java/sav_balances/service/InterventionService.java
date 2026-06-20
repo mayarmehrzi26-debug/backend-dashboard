@@ -31,13 +31,12 @@ public class InterventionService {
             i.setDateOrdre(java.time.LocalDateTime.now());
         }
         if (i.getType() == null || i.getType().isEmpty()) {
-            i.setType("EXTERNE");
+            i.setType("INTERNE");
         }
         if (i.getReference() == null) {
             i.setReference("");
         }
         
-        // Initialiser les montants de paiement
         if (i.getMontantTotal() == null || i.getMontantTotal() == 0) {
             Double montant = i.getPrixEstime();
             if (montant == null) {
@@ -50,6 +49,10 @@ public class InterventionService {
             i.setMontantPaye(0.0);
             i.setMontantRestant(montant);
             i.setStatutPaiement(Intervention.StatutPaiement.EN_ATTENTE);
+        }
+        
+        if (i.getStatutIntervention() == null) {
+            i.setStatutIntervention(Intervention.StatutIntervention.EN_ATTENTE);
         }
         
         return repo.save(i);
@@ -93,7 +96,6 @@ public class InterventionService {
             }
         }
         
-        // Initialiser les montants de paiement après la prestation
         if (i.getMontantTotal() == null || i.getMontantTotal() == 0) {
             Double montant = i.getPrixEstime();
             if (montant == null) {
@@ -119,16 +121,10 @@ public class InterventionService {
         return repo.findByType(type);
     }
     
-    // ========== MÉTHODES POUR LA GESTION DES PAIEMENTS ==========
-    
-    /**
-     * Méthode pour forcer la mise à jour des montants et du statut
-     */
     public Intervention refreshMontants(Long interventionId) {
         Intervention intervention = repo.findById(interventionId).orElse(null);
         if (intervention == null) return null;
         
-        // Récupérer le total payé
         Double totalPaye = repo.sumMontantPayeByIntervention(interventionId);
         if (totalPaye == null) totalPaye = 0.0;
         
@@ -149,7 +145,6 @@ public class InterventionService {
         if (montantRestant < 0) montantRestant = 0.0;
         intervention.setMontantRestant(montantRestant);
         
-        // Mettre à jour le statut
         if (montantTotal == 0) {
             intervention.setStatutPaiement(Intervention.StatutPaiement.PAYE);
         } else if (montantRestant <= 0.01) {
@@ -160,7 +155,6 @@ public class InterventionService {
             intervention.setStatutPaiement(Intervention.StatutPaiement.PARTIEL);
         }
         
-        // Vérifier les retards
         if (intervention.getDateEcheance() != null && 
             java.time.LocalDateTime.now().isAfter(intervention.getDateEcheance()) &&
             montantRestant > 0) {
@@ -170,37 +164,22 @@ public class InterventionService {
         return repo.save(intervention);
     }
     
-    /**
-     * Récupérer les interventions par statut de paiement
-     */
     public List<Intervention> getByStatutPaiement(Intervention.StatutPaiement statut) {
         return repo.findByStatutPaiement(statut);
     }
     
-    /**
-     * Récupérer les interventions en retard de paiement
-     */
     public List<Intervention> getInterventionsEnRetard() {
         return repo.findByDateEcheanceBeforeAndStatutPaiementNotPaye(java.time.LocalDateTime.now());
     }
     
-    /**
-     * Récupérer les interventions avec paiement partiel
-     */
     public List<Intervention> getInterventionsPaiementPartiel() {
         return repo.findByStatutPaiement(Intervention.StatutPaiement.PARTIEL);
     }
     
-    /**
-     * Récupérer les interventions entièrement payées
-     */
     public List<Intervention> getInterventionsPayees() {
         return repo.findByStatutPaiement(Intervention.StatutPaiement.PAYE);
     }
     
-    /**
-     * Récupérer les interventions en attente de paiement
-     */
     public List<Intervention> getInterventionsEnAttente() {
         return repo.findByStatutPaiement(Intervention.StatutPaiement.EN_ATTENTE);
     }

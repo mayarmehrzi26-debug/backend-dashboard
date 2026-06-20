@@ -42,6 +42,14 @@ export interface Intervention {
   prixReel?: number;
   prestationId?: number;
   type?: string;
+  
+  // ========== CHAMPS PROCESSUS INTERNE ==========
+  statutIntervention?: 'EN_ATTENTE' | 'CONFIRME' | 'ANNULE' | 'TERMINE';  // ← INCLURE CONFIRME
+  prixPropose?: number;
+  dateDiagnostic?: string;
+  dateRecuperation?: string;
+  
+  // Champs paiement
   montantTotal?: number;
   montantPaye?: number;
   montantRestant?: number;
@@ -170,4 +178,10 @@ export class ApiService {
   annulerTransaction(transactionId: number): Observable<void> {
     return this.http.delete<void>(`${this.apiUrl}/transactions/${transactionId}`);
   }
+exportBonRecuperationPdf(id: number): Observable<Blob> {
+  return this.http.get(`${this.apiUrl}/export/interne/${id}/recuperation`, {
+    responseType: 'blob'
+  });
+}
+
 }

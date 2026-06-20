@@ -38,17 +38,18 @@ export class InterventionsExternesComponent implements OnInit {
   showForm = false;
   showDetailsModal = false;
   showPaymentModal = false;
+  showStatusModal = false;  // ← NOUVEAU : Modal pour changer le statut
   isEditing = false;
   selectedIntervention: InterventionPaiement | null = null;
   interventionDetails: InterventionPaiement | null = null;
   interventionForm: FormGroup;
   paymentForm: FormGroup;
+  statusForm: FormGroup;  // ← NOUVEAU
   loading = true;
   detailsLoading = false;
   private dataLoaded = false;
   searchTerm: string = '';
   searchInterventionsTerm: string = '';
-  selectedPrestationId: number | null = null;
   selectedBalanceId: number | null = null;
   prixCalcule: number = 0;
   
@@ -68,6 +69,34 @@ export class InterventionsExternesComponent implements OnInit {
     { value: 'CARTE', label: '💳 Carte' }
   ];
 
+  // Statuts d'intervention (pour la modal de changement)
+  statutsIntervention = [
+    { value: 'EN_ATTENTE', label: '🔵 En attente' },
+    { value: 'ANNULE', label: '🔴 Annulé' },
+    { value: 'TERMINE', label: '🟢 Terminé' }
+  ];
+
+  // Helpers pour les statuts
+  getStatutInterventionLabel(statut?: string): string {
+    const labels: {[key: string]: string} = {
+      'EN_ATTENTE': '🔵 En attente',
+      'CONFIRME': '🟡 Confirmé',
+      'ANNULE': '🔴 Annulé',
+      'TERMINE': '🟢 Terminé'
+    };
+    return statut ? labels[statut] || statut : 'Non défini';
+  }
+
+  getStatutInterventionClass(statut?: string): string {
+    const classes: {[key: string]: string} = {
+      'EN_ATTENTE': 'badge-secondary',
+      'CONFIRME': 'badge-warning',
+      'ANNULE': 'badge-danger',
+      'TERMINE': 'badge-success'
+    };
+    return statut ? classes[statut] || 'badge-secondary' : 'badge-secondary';
+  }
+
   constructor(
     private apiService: ApiService,
     private fb: FormBuilder,
@@ -76,6 +105,7 @@ export class InterventionsExternesComponent implements OnInit {
   ) {
     this.interventionForm = this.createForm();
     this.paymentForm = this.createPaymentForm();
+    this.statusForm = this.createStatusForm();  // ← NOUVEAU
   }
 
   ngOnInit() {
@@ -88,17 +118,17 @@ export class InterventionsExternesComponent implements OnInit {
   createForm(): FormGroup {
     return this.fb.group({
       numeroOrdre: [{ value: '', disabled: true }],
+      type: [{ value: 'EXTERNE', disabled: true }],
       clientId: ['', Validators.required],
-      prestationId: ['', Validators.required],
-      balanceId: [''],
       societe: [{ value: '', disabled: true }],
       responsable: [{ value: '', disabled: true }],
       telephone: [{ value: '', disabled: true }],
       adresse: [{ value: '', disabled: true }],
       email: [{ value: '', disabled: true }],
-      bascule: [{ value: '', disabled: true }],
-      reference: [{ value: '', disabled: true }],
-      reclamation: [{ value: '', disabled: true }],
+      // ========== SAISIE MANUELLE ==========
+      nomEquipement: ['', Validators.required],
+      referenceEquipement: ['', Validators.required],
+      typeReclamation: ['', Validators.required],
       technicien: [''],
       dateReclamation: [new Date().toISOString().slice(0, 16)],
       dateOrdre: [new Date().toISOString().slice(0, 16)],
@@ -117,7 +147,15 @@ export class InterventionsExternesComponent implements OnInit {
     });
   }
 
-  // ==================== MÉTHODE DE RECHERCHE DES INTERVENTIONS ====================
+  // ========== NOUVEAU : Formulaire de statut ==========
+  createStatusForm(): FormGroup {
+    return this.fb.group({
+      statut: ['', Validators.required],
+      notes: ['']
+    });
+  }
+
+  // ==================== MÉTHODE DE RECHERCHE ====================
   
   filterInterventions() {
     if (!this.searchInterventionsTerm || this.searchInterventionsTerm.trim() === '') {
@@ -145,7 +183,6 @@ export class InterventionsExternesComponent implements OnInit {
     this.cdr.detectChanges();
   }
 
-  // ==================== CORRECTION : Méthode de conversion de statut ====================
   private convertToStatutPaiement(value: string | undefined): StatutPaiement | undefined {
     if (!value) return 'EN_ATTENTE';
     const validStatuses: StatutPaiement[] = ['EN_ATTENTE', 'PARTIEL', 'PAYE', 'EN_RETARD', 'ANNULE'];
@@ -177,6 +214,7 @@ export class InterventionsExternesComponent implements OnInit {
                 montantPaye: montantPaye,
                 montantRestant: montantRestant < 0 ? 0 : montantRestant,
                 statutPaiement: this.convertToStatutPaiement(interv.statutPaiement || this.calculateStatut(montantTotal, totalPaye)),
+                statutIntervention: interv.statutIntervention || 'EN_ATTENTE',
                 transactions: transactions || []
               } as InterventionPaiement;
             })
@@ -188,6 +226,7 @@ export class InterventionsExternesComponent implements OnInit {
                 montantPaye: interv.montantPaye || 0,
                 montantRestant: interv.montantRestant || montantTotal,
                 statutPaiement: this.convertToStatutPaiement(interv.statutPaiement || 'EN_ATTENTE'),
+                statutIntervention: interv.statutIntervention || 'EN_ATTENTE',
                 transactions: []
               } as InterventionPaiement;
             });
@@ -269,13 +308,6 @@ export class InterventionsExternesComponent implements OnInit {
     return balance ? balance.reference || '-' : '-';
   }
 
-  getBalanceDetails(balanceId: number | undefined): string {
-    if (!balanceId) return '-';
-    const balance = this.balanceMap.get(balanceId);
-    if (!balance) return '-';
-    return `${balance.reference} - ${balance.categorie} (${balance.prix} DT)`;
-  }
-
   getBalanceDisplay(balanceId: number | undefined): string {
     if (!balanceId) return '-';
     const balance = this.balanceMap.get(balanceId);
@@ -323,41 +355,58 @@ export class InterventionsExternesComponent implements OnInit {
     this.cdr.detectChanges();
   }
 
-  onPrestationSelect(event: Event) {
-    const select = event.target as HTMLSelectElement;
-    const prestationId = Number(select.value);
-    this.selectedPrestationId = prestationId;
-    
-    const selectedPrestation = this.prestations.find(p => p.id === prestationId);
-    if (selectedPrestation) {
-      if (selectedPrestation.prixForfait) {
-        this.prixCalcule = selectedPrestation.prixForfait;
-      } else if (selectedPrestation.prixHeure && selectedPrestation.dureeEstimeeHeures) {
-        this.prixCalcule = selectedPrestation.prixHeure * selectedPrestation.dureeEstimeeHeures;
-      }
-      this.interventionForm.patchValue({
-        prestationId: prestationId,
-        prixEstime: this.prixCalcule,
-        reclamation: selectedPrestation.nom
-      });
-    }
+  // ==================== MÉTHODES STATUT ====================
+
+  openStatusModal(intervention: InterventionPaiement | null) {
+    if (!intervention) return;
+    this.selectedIntervention = intervention;
+    this.statusForm.reset({
+      statut: intervention.statutIntervention || 'EN_ATTENTE',
+      notes: ''
+    });
+    this.showStatusModal = true;
     this.cdr.detectChanges();
   }
 
-  onBalanceSelect(event: Event) {
-    const select = event.target as HTMLSelectElement;
-    const balanceId = Number(select.value);
-    this.selectedBalanceId = balanceId;
-    
-    const selectedBalance = this.balances.find(b => b.id === balanceId);
-    if (selectedBalance) {
-      this.interventionForm.patchValue({
-        balanceId: balanceId,
-        bascule: selectedBalance.categorie || selectedBalance.reference,
-        reference: selectedBalance.reference || '-'
-      });
-    }
+  closeStatusModal() {
+    this.showStatusModal = false;
+    this.selectedIntervention = null;
     this.cdr.detectChanges();
+  }
+
+  saveStatus() {
+    if (this.statusForm.invalid) {
+      alert('Veuillez sélectionner un statut');
+      return;
+    }
+
+    if (!this.selectedIntervention || !this.selectedIntervention.id) return;
+
+    const formValue = this.statusForm.value;
+    const updatedIntervention: any = {
+      statutIntervention: formValue.statut,
+      rapportIntervention: formValue.notes || 'Statut modifié manuellement'
+    };
+
+    this.loading = true;
+    this.cdr.detectChanges();
+
+    this.apiService.updateIntervention(this.selectedIntervention.id, updatedIntervention).subscribe({
+      next: () => {
+        this.dataLoaded = false;
+        this.loadInterventions();
+        this.loading = false;
+        this.closeStatusModal();
+        alert('✅ Statut mis à jour avec succès');
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        console.error('Erreur:', err);
+        this.loading = false;
+        this.cdr.detectChanges();
+        alert('❌ Erreur lors de la mise à jour du statut');
+      }
+    });
   }
 
   // ==================== MÉTHODES PAIEMENT ====================
@@ -381,44 +430,86 @@ export class InterventionsExternesComponent implements OnInit {
     this.cdr.detectChanges();
   }
 
-  savePayment() {
-    if (this.paymentForm.invalid) {
-      alert('Veuillez remplir tous les champs obligatoires');
-      return;
-    }
-
-    if (!this.selectedIntervention || !this.selectedIntervention.id) return;
-
-    const formValue = this.paymentForm.value;
-    const transaction: Transaction = {
-      montant: formValue.montant,
-      methode: formValue.methode,
-      reference: formValue.reference || '',
-      notes: formValue.notes || '',
-      statut: 'VALIDE',
-      dateTransaction: new Date().toISOString()
-    };
-
-    this.loading = true;
-    this.cdr.detectChanges();
-
-    this.apiService.ajouterPaiement(this.selectedIntervention.id, transaction).subscribe({
-      next: () => {
-        this.dataLoaded = false;
-        this.loadInterventions();
-        this.loading = false;
-        this.closePaymentModal();
-        alert('✅ Paiement enregistré avec succès');
-        this.cdr.detectChanges();
-      },
-      error: (err) => {
-        console.error('Erreur:', err);
-        this.loading = false;
-        this.cdr.detectChanges();
-        alert('❌ Erreur: ' + (err.error || 'Impossible d\'enregistrer le paiement'));
-      }
-    });
+savePayment() {
+  if (this.paymentForm.invalid) {
+    alert('Veuillez remplir tous les champs obligatoires');
+    return;
   }
+
+  if (!this.selectedIntervention || !this.selectedIntervention.id) return;
+
+  const formValue = this.paymentForm.value;
+  const transaction: Transaction = {
+    montant: formValue.montant,
+    methode: formValue.methode,
+    reference: formValue.reference || '',
+    notes: formValue.notes || '',
+    statut: 'VALIDE',
+    dateTransaction: new Date().toISOString()
+  };
+
+  this.loading = true;
+  this.cdr.detectChanges();
+
+  this.apiService.ajouterPaiement(this.selectedIntervention.id, transaction).subscribe({
+    next: () => {
+      // ✅ Récupérer l'intervention complète mise à jour
+      this.apiService.getIntervention(this.selectedIntervention!.id!).subscribe({
+        next: (intervention) => {
+          const montantRestant = intervention.montantRestant ?? 0;
+          const montantTotal = intervention.montantTotal ?? 0;
+          
+          if (montantTotal > 0 && montantRestant <= 0) {
+            // ✅ Mettre à jour avec l'intervention complète et cast de type
+            const updatedIntervention: Intervention = {
+              ...intervention,
+              statutIntervention: 'TERMINE' as 'EN_ATTENTE' | 'CONFIRME' | 'ANNULE' | 'TERMINE',  // ← Cast de type
+              rapportIntervention: 'Intervention terminée - paiement complet'
+            };
+            
+            this.apiService.updateIntervention(this.selectedIntervention!.id!, updatedIntervention).subscribe({
+              next: () => {
+                this.dataLoaded = false;
+                this.loadInterventions();
+                this.loading = false;
+                this.closePaymentModal();
+                alert('✅ Paiement enregistré et intervention marquée comme terminée');
+                this.cdr.detectChanges();
+              },
+              error: (err) => {
+                console.error('Erreur mise à jour statut:', err);
+                this.loading = false;
+                this.closePaymentModal();
+                alert('✅ Paiement enregistré avec succès');
+                this.cdr.detectChanges();
+              }
+            });
+          } else {
+            this.loading = false;
+            this.closePaymentModal();
+            alert('✅ Paiement enregistré avec succès');
+            this.cdr.detectChanges();
+          }
+        },
+        error: (err) => {
+          console.error('Erreur récupération intervention:', err);
+          this.loading = false;
+          this.closePaymentModal();
+          this.dataLoaded = false;
+          this.loadInterventions();
+          alert('✅ Paiement enregistré avec succès');
+          this.cdr.detectChanges();
+        }
+      });
+    },
+    error: (err) => {
+      console.error('Erreur:', err);
+      this.loading = false;
+      this.cdr.detectChanges();
+      alert('❌ Erreur: ' + (err.error || 'Impossible d\'enregistrer le paiement'));
+    }
+  });
+}
 
   loadTransactions(interventionId: number) {
     this.apiService.getTransactionsByIntervention(interventionId).subscribe({
@@ -462,7 +553,6 @@ export class InterventionsExternesComponent implements OnInit {
     this.selectedIntervention = null;
     this.searchTerm = '';
     this.filteredClients = [];
-    this.selectedPrestationId = null;
     this.selectedBalanceId = null;
     this.prixCalcule = 0;
     
@@ -470,17 +560,16 @@ export class InterventionsExternesComponent implements OnInit {
     
     this.interventionForm.reset({
       numeroOrdre: newNumeroOrdre,
+      type: 'EXTERNE',
       clientId: '',
-      prestationId: '',
-      balanceId: '',
       societe: '',
       responsable: '',
       telephone: '',
       adresse: '',
       email: '',
-      bascule: '',
-      reference: '',
-      reclamation: '',
+      nomEquipement: '',
+      referenceEquipement: '',
+      typeReclamation: '',
       technicien: '',
       dateReclamation: new Date().toISOString().slice(0, 16),
       dateOrdre: new Date().toISOString().slice(0, 16),
@@ -496,7 +585,6 @@ export class InterventionsExternesComponent implements OnInit {
     this.interventionForm.reset();
     this.filteredClients = [];
     this.searchTerm = '';
-    this.selectedPrestationId = null;
     this.selectedBalanceId = null;
     this.prixCalcule = 0;
     this.cdr.detectChanges();
@@ -514,7 +602,8 @@ export class InterventionsExternesComponent implements OnInit {
           montantTotal: data.montantTotal || data.prixEstime || 0,
           montantPaye: data.montantPaye || 0,
           montantRestant: data.montantRestant || 0,
-          statutPaiement: this.convertToStatutPaiement(data.statutPaiement || 'EN_ATTENTE')
+          statutPaiement: this.convertToStatutPaiement(data.statutPaiement || 'EN_ATTENTE'),
+          statutIntervention: data.statutIntervention || 'EN_ATTENTE'
         };
         if (intervention.id) {
           this.loadTransactions(intervention.id);
@@ -542,33 +631,19 @@ export class InterventionsExternesComponent implements OnInit {
     this.selectedIntervention = intervention;
     
     const client = this.clients.find(c => c.societe === intervention.societe);
-    const prestation = this.prestations.find(p => p.nom === intervention.reclamation);
-    const balance = this.balances.find(b => intervention.bascule?.includes(b.reference || ''));
-    
-    if (prestation) {
-      this.selectedPrestationId = prestation.id || null;
-      if (prestation.prixForfait) {
-        this.prixCalcule = prestation.prixForfait;
-      } else if (prestation.prixHeure && prestation.dureeEstimeeHeures) {
-        this.prixCalcule = prestation.prixHeure * prestation.dureeEstimeeHeures;
-      }
-    }
-    
-    this.selectedBalanceId = balance?.id || null;
     
     this.interventionForm.patchValue({
       numeroOrdre: intervention.numeroOrdre,
+      type: 'EXTERNE',
       clientId: client?.id,
-      prestationId: prestation?.id,
-      balanceId: balance?.id,
       societe: intervention.societe,
       responsable: intervention.responsable,
       telephone: intervention.telephone,
       adresse: intervention.adresse,
       email: intervention.email,
-      bascule: intervention.bascule,
-      reference: balance?.reference || '-',
-      reclamation: intervention.reclamation,
+      nomEquipement: intervention.bascule || '',
+      referenceEquipement: intervention.reference || '',
+      typeReclamation: intervention.reclamation || '',
       technicien: intervention.technicien,
       dateReclamation: intervention.dateReclamation?.slice(0, 16),
       dateOrdre: intervention.dateOrdre?.slice(0, 16),
@@ -592,19 +667,24 @@ export class InterventionsExternesComponent implements OnInit {
       numeroOrdre: formValue.numeroOrdre,
       type: 'EXTERNE',
       societe: formValue.societe,
-      bascule: formValue.bascule,
-      reference: formValue.reference || '',
+      bascule: formValue.nomEquipement,
+      reference: formValue.referenceEquipement,
       responsable: formValue.responsable,
       adresse: formValue.adresse,
       telephone: formValue.telephone,
       email: formValue.email,
-      reclamation: formValue.reclamation,
+      reclamation: formValue.typeReclamation,
       technicien: formValue.technicien,
       dateReclamation: formValue.dateReclamation,
       dateOrdre: formValue.dateOrdre,
       rapportIntervention: formValue.rapportIntervention,
       prixEstime: this.prixCalcule,
-      prixReel: formValue.prixReel
+      prixReel: formValue.prixReel,
+      statutIntervention: 'EN_ATTENTE',  // ← STATUT INITIALISÉ À EN_ATTENTE
+      montantTotal: this.prixCalcule || 0,
+      montantPaye: 0,
+      montantRestant: this.prixCalcule || 0,
+      statutPaiement: 'EN_ATTENTE'
     };
 
     this.loading = true;
@@ -714,7 +794,8 @@ export class InterventionsExternesComponent implements OnInit {
             montantTotal: updatedIntervention.montantTotal || updatedIntervention.prixEstime || 0,
             montantPaye: updatedIntervention.montantPaye || 0,
             montantRestant: updatedIntervention.montantRestant || 0,
-            statutPaiement: this.convertToStatutPaiement(updatedIntervention.statutPaiement || 'EN_ATTENTE')
+            statutPaiement: this.convertToStatutPaiement(updatedIntervention.statutPaiement || 'EN_ATTENTE'),
+            statutIntervention: updatedIntervention.statutIntervention || 'EN_ATTENTE'
           };
           this.filteredInterventions = [...this.interventions];
           this.cdr.detectChanges();

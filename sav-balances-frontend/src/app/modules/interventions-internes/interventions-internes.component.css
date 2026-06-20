@@ -675,3 +675,53 @@ textarea.form-control {
     gap: 10px;
   }
 }
+/* Ajouter à la fin du fichier interventions-internes.component.css */
+
+/* ==================== BADGES STATUT INTERVENTION ==================== */
+.badge-success {
+  background: #28a745;
+  color: white;
+}
+
+.badge-warning {
+  background: #ffc107;
+  color: #333;
+}
+
+.badge-danger {
+  background: #dc3545;
+  color: white;
+}
+
+.badge-secondary {
+  background: #6c757d;
+  color: white;
+}
+
+/* ==================== BOUTONS ACTIONS ==================== */
+.btn-group-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.btn-group-actions .btn-sm {
+  margin: 0;
+}
+
+/* ==================== MODAL SMALL ==================== */
+.modal-small .modal-content {
+  max-width: 450px;
+}
+
+/* ==================== RESPONSIVE ==================== */
+@media (max-width: 768px) {
+  .btn-group-actions {
+    flex-direction: column;
+    gap: 4px;
+  }
+  
+  .btn-group-actions .btn-sm {
+    width: 100%;
+  }
+}

@@ -9,7 +9,7 @@
       </button>
     </div>
 
-    <!-- ==================== BARRE DE RECHERCHE ==================== -->
+    <!-- BARRE DE RECHERCHE -->
     <div class="search-container">
       <div class="search-box">
         <i class="bi bi-search search-icon"></i>
@@ -44,6 +44,7 @@
             <th>Société</th>
             <th>Réclamation</th>
             <th>Technicien</th>
+            <th>Statut</th>
             <th>Date</th>
             <th>Paiement</th>
             <th>Actions</th>
@@ -51,17 +52,17 @@
         </thead>
         <tbody>
           <tr *ngIf="loading">
-            <td colspan="7" class="loading">
+            <td colspan="8" class="loading">
               <i class="bi bi-hourglass-split"></i> Chargement...
             </td>
           </tr>
           <tr *ngIf="!loading && interventions.length === 0">
-            <td colspan="7" class="loading">
+            <td colspan="8" class="loading">
               <i class="bi bi-inbox"></i> Aucune intervention
             </td>
           </tr>
           <tr *ngIf="!loading && interventions.length > 0 && filteredInterventions.length === 0">
-            <td colspan="7" class="loading">
+            <td colspan="8" class="loading">
               <i class="bi bi-search"></i> Aucune intervention ne correspond à votre recherche
               <br>
               <button class="btn btn-sm btn-secondary" (click)="clearInterventionsSearch()" style="margin-top: 10px;">
@@ -74,6 +75,11 @@
             <td>{{ intervention.societe }}</td>
             <td>{{ intervention.reclamation }}</td>
             <td>{{ intervention.technicien }}</td>
+            <td>
+              <span class="badge" [class]="getStatutInterventionClass(intervention.statutIntervention)">
+                {{ getStatutInterventionLabel(intervention.statutIntervention) }}
+              </span>
+            </td>
             <td>{{ intervention.dateOrdre | date:'dd/MM/yyyy' }}</td>
             <td>
               <span class="badge" [class]="getStatutClass(intervention.statutPaiement)">
@@ -97,6 +103,10 @@
               <button class="btn btn-info btn-sm" (click)="viewInterventionDetails(intervention)" title="Voir détails">
                 <i class="bi bi-eye"></i>
               </button>
+              <!-- Bouton Changer statut -->
+              <button class="btn btn-warning btn-sm" (click)="openStatusModal(intervention)" title="Changer statut">
+                <i class="bi bi-arrow-repeat"></i>
+              </button>
               <button class="btn btn-success btn-sm" (click)="openPaymentModal(intervention)" title="Ajouter paiement">
                 <i class="bi bi-credit-card"></i>
               </button>
@@ -116,7 +126,7 @@
     </div>
   </div>
 
-  <!-- Modal Formulaire -->
+  <!-- ==================== MODAL FORMULAIRE ==================== -->
   <div class="modal" *ngIf="showForm">
     <div class="modal-content modal-large">
       <div class="modal-header">
@@ -129,6 +139,51 @@
           <input type="text" class="form-control" formControlName="numeroOrdre" readonly>
         </div>
 
+        <div class="form-group">
+          <label>Type</label>
+          <input type="text" class="form-control" formControlName="type" readonly>
+        </div>
+  <div class="modal" *ngIf="showStatusModal">
+    <div class="modal-content modal-large">
+      <div class="modal-header">
+        <h3>
+          <i class="bi bi-arrow-repeat"></i>
+          Changer le statut
+          <small style="font-size: 0.8rem; color: #6c757d; display: block;">
+            Intervention #{{ selectedIntervention?.numeroOrdre }}
+          </small>
+        </h3>
+        <button class="close" (click)="closeStatusModal()">&times;</button>
+      </div>
+      
+      <form [formGroup]="statusForm" (ngSubmit)="saveStatus()">
+        <div class="form-group">
+          <label>Statut *</label>
+          <select class="form-control" formControlName="statut">
+            <option *ngFor="let s of statutsIntervention" [value]="s.value">
+              {{ s.label }}
+            </option>
+          </select>
+          <small class="text-muted">Le statut "Terminé" sera automatiquement appliqué lors du paiement complet</small>
+        </div>
+
+        <div class="form-group">
+          <label>Notes</label>
+          <textarea class="form-control" formControlName="notes" rows="2"
+                    placeholder="Raison du changement de statut..."></textarea>
+        </div>
+
+        <div style="display: flex; gap: 10px; justify-content: flex-end;">
+          <button type="button" class="btn btn-secondary" (click)="closeStatusModal()">Annuler</button>
+          <button type="submit" class="btn btn-primary" [disabled]="statusForm.invalid">
+            <i class="bi bi-save"></i> Mettre à jour
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+        <!-- ========== SÉLECTION DU CLIENT (seul sélection) ========== -->
         <div class="form-group">
           <label>Sélectionner la société *</label>
           <input type="text" 
@@ -147,46 +202,7 @@
           </div>
         </div>
 
-        <div class="form-group">
-          <label>Sélectionner l'équipement / Bascule</label>
-          <select class="form-control" (change)="onBalanceSelect($event)" [value]="selectedBalanceId">
-            <option [value]="null">-- Sélectionner un équipement --</option>
-            <option *ngFor="let balance of balances" [value]="balance.id">
-              {{ balance.reference }} - {{ balance.categorie }} ({{ balance.prix }} DT)
-            </option>
-          </select>
-        </div>
-
-        <div class="form-group">
-          <label>Équipement sélectionné</label>
-          <input type="text" class="form-control" formControlName="bascule" readonly placeholder="L'équipement sélectionné apparaîtra ici">
-        </div>
-
-        <div class="form-group">
-          <label>Sélectionner le type de prestation *</label>
-          <select class="form-control" (change)="onPrestationSelect($event)" [value]="selectedPrestationId">
-            <option [value]="null">-- Sélectionner une prestation --</option>
-            <option *ngFor="let prestation of prestations" [value]="prestation.id">
-              {{ prestation.nom }} - {{ prestation.prixForfait ? prestation.prixForfait + ' DT (forfait)' : (prestation.prixHeure || 0) + ' DT/heure' }}
-            </option>
-          </select>
-        </div>
-
-        <div class="form-group">
-          <label>Réclamation</label>
-          <input type="text" class="form-control" formControlName="reclamation" readonly placeholder="La réclamation sera auto-remplie">
-        </div>
-
-        <div class="form-group" *ngIf="prixCalcule > 0">
-          <label>Prix estimé</label>
-          <input type="number" class="form-control" [value]="prixCalcule" readonly style="background:#e8f5e9; font-weight:bold; color:#1a6d3f;">
-        </div>
-
-        <div class="form-group">
-          <label>Prix réel (si différent)</label>
-          <input type="number" class="form-control" formControlName="prixReel" step="0.01" placeholder="Laisser vide si identique à l'estimé">
-        </div>
-
+        <!-- Informations client (auto-remplies) -->
         <div class="info-client">
           <h4>Informations client</h4>
           <div class="form-group">
@@ -213,7 +229,34 @@
           </div>
         </div>
 
-        <h4>Détails de l'intervention</h4>
+        <!-- ========== SAISIE MANUELLE ÉQUIPEMENT ========== -->
+        <div class="form-group">
+          <label>Nom de l'équipement / Bascule *</label>
+          <input type="text" class="form-control" formControlName="nomEquipement" placeholder="Ex: Pont bascule 60T">
+        </div>
+
+        <div class="form-group">
+          <label>Référence / Numéro de série *</label>
+          <input type="text" class="form-control" formControlName="referenceEquipement" placeholder="Ex: BASC-001">
+        </div>
+
+        <!-- ========== SAISIE MANUELLE RÉCLAMATION ========== -->
+        <div class="form-group">
+          <label>Type de réclamation *</label>
+          <input type="text" class="form-control" formControlName="typeReclamation" placeholder="Ex: Poinçonnage périodique">
+        </div>
+
+        <!-- ========== STATUT INTERVENTION ========== -->
+        <div class="form-group">
+          <label>Statut de l'intervention *</label>
+          <select class="form-control" formControlName="statutIntervention">
+            <option *ngFor="let statut of statutsIntervention" [value]="statut.value">
+              {{ statut.label }}
+            </option>
+          </select>
+        </div>
+
+        <!-- ========== FIN SAISIE MANUELLE ========== -->
 
         <div class="form-group">
           <label>Technicien</label>
@@ -238,7 +281,7 @@
 
         <div style="display: flex; gap: 10px; justify-content: flex-end;">
           <button type="button" class="btn btn-danger" (click)="closeForm()">Annuler</button>
-          <button type="submit" class="btn btn-primary" [disabled]="!interventionForm.get('clientId')?.value || !interventionForm.get('prestationId')?.value">
+          <button type="submit" class="btn btn-primary" [disabled]="!interventionForm.get('clientId')?.value || !interventionForm.get('nomEquipement')?.value">
             Enregistrer
           </button>
         </div>

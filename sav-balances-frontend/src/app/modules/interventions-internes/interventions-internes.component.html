@@ -9,14 +9,13 @@
       </button>
     </div>
 
-    <!-- ==================== BARRE DE RECHERCHE ==================== -->
     <div class="search-container">
       <div class="search-box">
         <i class="bi bi-search search-icon"></i>
         <input 
           type="text" 
           class="search-input" 
-          placeholder="Rechercher par N° Ordre, Société, Équipement, Réclamation, Technicien..."
+          placeholder="Rechercher par N° Ordre, Société, Équipement, Réclamation..."
           [(ngModel)]="searchInterventionsTerm"
           (input)="filterInterventions()"
           (keyup.escape)="clearInterventionsSearch()"
@@ -42,7 +41,9 @@
           <tr>
             <th>N° Ordre</th>
             <th>Société</th>
+            <th>Équipement</th>
             <th>Réclamation</th>
+            <th>Statut</th>
             <th>Date</th>
             <th>Paiement</th>
             <th>Actions</th>
@@ -50,17 +51,17 @@
         </thead>
         <tbody>
           <tr *ngIf="loading">
-            <td colspan="7" class="loading">
+            <td colspan="8" class="loading">
               <i class="bi bi-hourglass-split"></i> Chargement...
             </td>
           </tr>
           <tr *ngIf="!loading && interventions.length === 0">
-            <td colspan="7" class="loading">
+            <td colspan="8" class="loading">
               <i class="bi bi-inbox"></i> Aucune intervention interne
             </td>
           </tr>
           <tr *ngIf="!loading && interventions.length > 0 && filteredInterventions.length === 0">
-            <td colspan="7" class="loading">
+            <td colspan="8" class="loading">
               <i class="bi bi-search"></i> Aucune intervention ne correspond à votre recherche
               <br>
               <button class="btn btn-sm btn-secondary" (click)="clearInterventionsSearch()" style="margin-top: 10px;">
@@ -69,9 +70,15 @@
             </td>
           </tr>
           <tr *ngFor="let intervention of filteredInterventions">
-            <td>{{ intervention.numeroOrdre }}</td>
+            <td><strong>{{ intervention.numeroOrdre }}</strong></td>
             <td>{{ intervention.societe || '-' }}</td>
+            <td>{{ intervention.bascule || '-' }}</td>
             <td>{{ intervention.reclamation || '-' }}</td>
+            <td>
+              <span class="badge" [class]="getStatutInterventionClass(intervention.statutIntervention)">
+                {{ getStatutInterventionLabel(intervention.statutIntervention) }}
+              </span>
+            </td>
             <td>{{ intervention.dateOrdre | date:'dd/MM/yyyy' }}</td>
             <td>
               <span class="badge" [class]="getStatutClass(intervention.statutPaiement)">
@@ -92,21 +99,29 @@
               </div>
             </td>
             <td>
-              <button class="btn btn-info btn-sm" (click)="viewInterventionDetails(intervention)" title="Voir détails">
-                <i class="bi bi-eye"></i>
-              </button>
-              <button class="btn btn-success btn-sm" (click)="openPaymentModal(intervention)" title="Ajouter paiement">
-                <i class="bi bi-credit-card"></i>
-              </button>
-              <button class="btn btn-danger btn-sm" (click)="exportFormulaire(intervention.id!)" title="Exporter PDF">
-                <i class="bi bi-file-pdf"></i>
-              </button>
-              <button class="btn btn-warning btn-sm" (click)="editIntervention(intervention)" title="Modifier">
-                <i class="bi bi-pencil"></i>
-              </button>
-              <button class="btn btn-danger btn-sm" (click)="deleteIntervention(intervention.id!)" title="Supprimer">
-                <i class="bi bi-trash"></i>
-              </button>
+              <div class="btn-group-actions">
+                <button class="btn btn-info btn-sm" (click)="viewInterventionDetails(intervention)" title="Voir détails">
+                  <i class="bi bi-eye"></i>
+                </button>
+                <button class="btn btn-primary btn-sm" (click)="openConfirmModal(intervention)" title="Confirmer (diagnostic OK)" *ngIf="intervention.statutIntervention === 'EN_ATTENTE'">
+                  <i class="bi bi-check-circle"></i>
+                </button>
+                <button class="btn btn-warning btn-sm" (click)="openStatusModal(intervention)" title="Changer statut">
+                  <i class="bi bi-arrow-repeat"></i>
+                </button>
+                <button class="btn btn-danger btn-sm" (click)="exportFormulaire(intervention.id!)" title="Bon de reçue PDF">
+                  <i class="bi bi-file-pdf"></i>
+                </button>
+                <button class="btn btn-success btn-sm" (click)="exportBonRecuperation(intervention.id!)" title="Bon de récupération" *ngIf="intervention.statutIntervention === 'TERMINE'">
+                  <i class="bi bi-box-arrow-left"></i>
+                </button>
+                <button class="btn btn-warning btn-sm" (click)="editIntervention(intervention)" title="Modifier">
+                  <i class="bi bi-pencil"></i>
+                </button>
+                <button class="btn btn-danger btn-sm" (click)="deleteIntervention(intervention.id!)" title="Supprimer">
+                  <i class="bi bi-trash"></i>
+                </button>
+              </div>
             </td>
           </tr>
         </tbody>
@@ -114,7 +129,6 @@
     </div>
   </div>
 
-  <!-- Modal Formulaire -->
   <div class="modal" *ngIf="showForm">
     <div class="modal-content modal-large">
       <div class="modal-header">
@@ -132,7 +146,6 @@
           <input type="text" class="form-control" formControlName="type" readonly>
         </div>
 
-        <!-- Sélection du client -->
         <div class="form-group">
           <label>Sélectionner la société *</label>
           <input type="text" 
@@ -151,51 +164,21 @@
           </div>
         </div>
 
-        <!-- Sélection de l'équipement -->
         <div class="form-group">
-          <label>Sélectionner l'équipement / Bascule</label>
-          <select class="form-control" (change)="onBalanceSelect($event)" [value]="selectedBalanceId">
-            <option [value]="null">-- Sélectionner un équipement --</option>
-            <option *ngFor="let balance of balances" [value]="balance.id">
-              {{ balance.reference }} - {{ balance.categorie }} ({{ balance.prix }} DT)
-            </option>
-          </select>
+          <label>Nom de l'équipement / Bascule *</label>
+          <input type="text" class="form-control" formControlName="nomEquipement" placeholder="Ex: Pont bascule 60T">
         </div>
 
         <div class="form-group">
-          <label>Équipement sélectionné</label>
-          <input type="text" class="form-control" formControlName="bascule" readonly placeholder="L'équipement sélectionné apparaîtra ici">
-        </div>
-
-        <!-- Sélection du type de prestation -->
-        <div class="form-group">
-          <label>Sélectionner le type de prestation *</label>
-          <select class="form-control" (change)="onPrestationSelect($event)" [value]="selectedPrestationId">
-            <option [value]="null">-- Sélectionner une prestation --</option>
-            <option *ngFor="let prestation of prestations" [value]="prestation.id">
-              {{ prestation.nom }} - {{ prestation.prixForfait ? prestation.prixForfait + ' DT (forfait)' : (prestation.prixHeure || 0) + ' DT/heure' }}
-            </option>
-          </select>
-        </div>
-
-        <!-- Réclamation -->
-        <div class="form-group">
-          <label>Réclamation</label>
-          <input type="text" class="form-control" formControlName="reclamation" readonly placeholder="La réclamation sera auto-remplie">
-        </div>
-
-        <!-- Prix estimé -->
-        <div class="form-group" *ngIf="prixCalcule > 0">
-          <label>Prix estimé</label>
-          <input type="number" class="form-control" [value]="prixCalcule" readonly style="background:#e8f5e9; font-weight:bold; color:#1a6d3f;">
+          <label>Référence / Numéro de série *</label>
+          <input type="text" class="form-control" formControlName="referenceEquipement" placeholder="Ex: BASC-001">
         </div>
 
         <div class="form-group">
-          <label>Prix réel (si différent)</label>
-          <input type="number" class="form-control" formControlName="prixReel" step="0.01" placeholder="Laisser vide si identique à l'estimé">
+          <label>Type de réclamation *</label>
+          <input type="text" class="form-control" formControlName="typeReclamation" placeholder="Ex: Poinçonnage périodique">
         </div>
 
-        <!-- Informations client -->
         <div class="info-client">
           <h4>Informations client</h4>
           <div class="form-group">
@@ -222,10 +205,9 @@
           </div>
         </div>
 
-        <!-- Détails intervention -->
         <h4>Détails de l'intervention</h4>
 
-      
+     
 
         <div class="form-row">
           <div class="form-group">
@@ -245,7 +227,7 @@
 
         <div style="display: flex; gap: 10px; justify-content: flex-end;">
           <button type="button" class="btn btn-danger" (click)="closeForm()">Annuler</button>
-          <button type="submit" class="btn btn-primary" [disabled]="!interventionForm.get('clientId')?.value || !interventionForm.get('prestationId')?.value">
+          <button type="submit" class="btn btn-primary" [disabled]="interventionForm.invalid">
             Enregistrer
           </button>
         </div>
@@ -253,7 +235,93 @@
     </div>
   </div>
 
-  <!-- Modal Détails Intervention -->
+  <div class="modal" *ngIf="showConfirmModal">
+    <div class="modal-content modal-large">
+      <div class="modal-header">
+        <h3>
+          <i class="bi bi-check-circle-fill"></i>
+          Confirmer l'intervention
+          <small style="font-size: 0.8rem; color: #6c757d; display: block;">
+            Intervention #{{ selectedIntervention?.numeroOrdre }}
+          </small>
+        </h3>
+        <button class="close" (click)="closeConfirmModal()">&times;</button>
+      </div>
+      
+      <form [formGroup]="confirmForm" (ngSubmit)="saveConfirmation()">
+        <div class="form-group">
+          <label>Prix proposé (DT) *</label>
+          <input type="number" class="form-control" formControlName="prixPropose" 
+                 step="0.01" placeholder="Ex: 150.00">
+          <small class="text-muted">Prix que vous proposez au client</small>
+        </div>
+
+        <div class="form-group">
+          <label>Date du diagnostic *</label>
+          <input type="datetime-local" class="form-control" formControlName="dateDiagnostic">
+        </div>
+
+        <div class="form-group">
+          <label>Notes / Diagnostic</label>
+          <textarea class="form-control" formControlName="notes" rows="3"
+                    placeholder="Résumé du diagnostic..."></textarea>
+        </div>
+
+        <div style="display: flex; gap: 10px; justify-content: flex-end;">
+          <button type="button" class="btn btn-secondary" (click)="closeConfirmModal()">Annuler</button>
+          <button type="submit" class="btn btn-success" [disabled]="confirmForm.invalid">
+            <i class="bi bi-check-circle"></i> Confirmer
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal" *ngIf="showStatusModal">
+    <div class="modal-content modal-large">
+      <div class="modal-header">
+        <h3>
+          <i class="bi bi-arrow-repeat"></i>
+          Changer le statut
+          <small style="font-size: 0.8rem; color: #6c757d; display: block;">
+            Intervention #{{ selectedIntervention?.numeroOrdre }}
+          </small>
+        </h3>
+        <button class="close" (click)="closeStatusModal()">&times;</button>
+      </div>
+      
+      <form [formGroup]="statusForm" (ngSubmit)="saveStatus()">
+        <div class="form-group">
+          <label>Statut *</label>
+          <select class="form-control" formControlName="statut">
+            <option *ngFor="let s of statutsIntervention" [value]="s.value">
+              {{ s.label }}
+            </option>
+          </select>
+        </div>
+
+        <div class="form-group" *ngIf="statusForm.get('statut')?.value === 'TERMINE'">
+          <label>Date de récupération</label>
+          <input type="datetime-local" class="form-control" formControlName="dateRecuperation">
+          <small class="text-muted">Date à laquelle le client récupère son équipement</small>
+        </div>
+
+        <div class="form-group">
+          <label>Notes</label>
+          <textarea class="form-control" formControlName="notes" rows="2"
+                    placeholder="Commentaires sur ce changement de statut..."></textarea>
+        </div>
+
+        <div style="display: flex; gap: 10px; justify-content: flex-end;">
+          <button type="button" class="btn btn-secondary" (click)="closeStatusModal()">Annuler</button>
+          <button type="submit" class="btn btn-primary" [disabled]="statusForm.invalid">
+            <i class="bi bi-save"></i> Mettre à jour
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <div class="modal" *ngIf="showDetailsModal">
     <div class="modal-content modal-large">
       <div class="modal-header">
@@ -314,23 +382,35 @@
               <label>Réclamation :</label>
               <span class="badge badge-warning">{{ interventionDetails.reclamation || '-' }}</span>
             </div>
-           
             <div class="detail-item">
-              <label>Prix estimé :</label>
-              <span>{{ interventionDetails.prixEstime || '-' }} DT</span>
+              <label>Statut :</label>
+              <span class="badge" [class]="getStatutInterventionClass(interventionDetails.statutIntervention)">
+                {{ getStatutInterventionLabel(interventionDetails.statutIntervention) }}
+              </span>
+            </div>
+            <div class="detail-item">
+              <label>Prix proposé :</label>
+              <span>{{ interventionDetails.prixPropose || '-' }} DT</span>
             </div>
             <div class="detail-item">
               <label>Date réclamation :</label>
               <span>{{ formatDate(interventionDetails.dateReclamation) }}</span>
             </div>
             <div class="detail-item">
+              <label>Date diagnostic :</label>
+              <span>{{ formatDate(interventionDetails.dateDiagnostic) }}</span>
+            </div>
+            <div class="detail-item">
               <label>Date ordre :</label>
               <span>{{ formatDate(interventionDetails.dateOrdre) }}</span>
+            </div>
+            <div class="detail-item" *ngIf="interventionDetails.dateRecuperation">
+              <label>Date récupération :</label>
+              <span>{{ formatDate(interventionDetails.dateRecuperation) }}</span>
             </div>
           </div>
         </div>
 
-        <!-- Section Paiement -->
         <div class="details-section">
           <h4><i class="bi bi-credit-card"></i> Suivi des paiements</h4>
           
@@ -414,7 +494,7 @@
         <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
           <button type="button" class="btn btn-secondary" (click)="closeDetailsModal()">Fermer</button>
           <button type="button" class="btn btn-success" (click)="exportFormulaire(interventionDetails.id!); closeDetailsModal()">
-            <i class="bi bi-file-text"></i> Exporter
+            <i class="bi bi-file-text"></i> Bon de reçue
           </button>
           <button type="button" class="btn btn-primary" (click)="editIntervention(interventionDetails); closeDetailsModal()">
             <i class="bi bi-pencil"></i> Modifier
@@ -424,7 +504,6 @@
     </div>
   </div>
 
-  <!-- Modal Ajouter Paiement -->
   <div class="modal" *ngIf="showPaymentModal">
     <div class="modal-content modal-large">
       <div class="modal-header">
