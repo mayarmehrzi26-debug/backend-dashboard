@@ -87,7 +87,7 @@ public class ExportController {
         }
     }
     
-    // Export PDF Interne - Bon de Reçue (2 parties)
+ // Export PDF Interne - Bon de Reçue (2 parties)
     @GetMapping("/interne/{interventionId}/pdf")
     public ResponseEntity<ByteArrayResource> exportFormulaireInternePdf(@PathVariable Long interventionId) {
         try {
@@ -101,7 +101,8 @@ public class ExportController {
                 intervention.getSociete(),
                 intervention.getBascule(),
                 intervention.getReference() != null ? intervention.getReference() : "",
-                intervention.getDateOrdre() != null ? intervention.getDateOrdre().toString() : "",
+                intervention.getDateReclamation() != null ? intervention.getDateReclamation().toString() : "",  // ✅ Date réclamation
+                intervention.getDateOrdre() != null ? intervention.getDateOrdre().toString() : "",             // ✅ Date intervention
                 intervention.getReclamation(),
                 intervention.getRapportIntervention()
             );
@@ -119,7 +120,7 @@ public class ExportController {
         }
     }
 
-    // ========== BON DE RÉCUPÉRATION (CORRIGÉ) ==========
+    // Bon de récupération
     @GetMapping("/interne/{interventionId}/recuperation")
     public ResponseEntity<ByteArrayResource> exportBonRecuperationPdf(@PathVariable Long interventionId) {
         try {
@@ -134,7 +135,8 @@ public class ExportController {
                 intervention.getBascule(),
                 intervention.getReference() != null ? intervention.getReference() : "",
                 intervention.getMontantTotal() != null ? intervention.getMontantTotal() : 0.0,
-                intervention.getDateOrdre() != null ? intervention.getDateOrdre().toString() : "",
+                intervention.getDateReclamation() != null ? intervention.getDateReclamation().toString() : "",  // ✅ Date réclamation
+                intervention.getDateOrdre() != null ? intervention.getDateOrdre().toString() : "",             // ✅ Date intervention
                 java.time.LocalDateTime.now().toString(),
                 intervention.getReclamation() != null ? intervention.getReclamation() : ""
             );

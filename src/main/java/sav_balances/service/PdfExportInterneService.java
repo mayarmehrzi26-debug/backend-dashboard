@@ -37,10 +37,12 @@ public class PdfExportInterneService {
     }
 
     // ========== BON DE REÇUE (2 PARTIES) ==========
+    // ✅ AJOUT DU PARAMÈTRE dateReclamation
     public byte[] generateFormulaireInternePdf(String numeroOrdre, String societe,
                                                 String equipement,
                                                 String reference,
-                                                String dateIntervention,
+                                                String dateReclamation,  // ✅ NOUVEAU
+                                                String dateIntervention, // ✅ GARDÉ
                                                 String reclamation,
                                                 String rapportIntervention) {
         
@@ -133,10 +135,10 @@ public class PdfExportInterneService {
             // Titre
             Paragraph title = new Paragraph("ORDRE D'INTERVENTION INTERNE N° " + numeroOrdre, subTitleFont);
             title.setAlignment(Element.ALIGN_CENTER);
-            title.setSpacingBefore(20);
-            title.setSpacingAfter(12);
+            title.setSpacingBefore(8);
+            title.setSpacingAfter(5);
             document.add(title);
-            
+          
             // ========== TABLEAU DES INFORMATIONS (PARTIE CLIENT) ==========
             PdfPTable mainTable = new PdfPTable(2);
             mainTable.setWidthPercentage(100);
@@ -144,34 +146,39 @@ public class PdfExportInterneService {
             
             addSectionTitle(mainTable, "📋 INFORMATIONS CLIENT", COLOR_PRIMARY, 2);
             addRow(mainTable, "N° Ordre :", getValue(numeroOrdre), labelFont, valueFont);
-            addRow(mainTable, "Société :", getValue(societe), labelFont, valueFont);
+            addRow(mainTable, "Client :", getValue(societe), labelFont, valueFont);
             addRow(mainTable, "Équipement :", getValue(equipement), labelFont, valueFont);
-            addRow(mainTable, "Référence :", getValue(reference), labelFont, referenceFont);
-            addRow(mainTable, "Date de réclamation :", formatDate(dateIntervention), labelFont, valueFont);
+            addRow(mainTable, "N° de série :", getValue(reference), labelFont, referenceFont);
+            
+            // ✅ CORRECTION : Date de réclamation
+            addRow(mainTable, "Date de réclamation :", formatDate(dateReclamation), labelFont, valueFont);
+            
+            // ✅ CORRECTION : Date d'intervention
+            addRow(mainTable, "Date d'intervention :", formatDate(dateIntervention), labelFont, valueFont);
+            
             addRow(mainTable, "Réclamation :", getValue(reclamation), labelFont, reclamationFont);
             
             document.add(mainTable);
             
             // Message pour le client
             Paragraph clientMessage = new Paragraph(
-                "⚠️ Après 30 jours de dépôt de l’appareil sans récupération, nous ne sommes plus responsables de l’appareil.",
-                new Font(Font.HELVETICA, 10, Font.ITALIC, Color.DARK_GRAY)
-            );
-            clientMessage.setAlignment(Element.ALIGN_CENTER);
-            clientMessage.setSpacingBefore(5);
-            clientMessage.setSpacingAfter(5);
-            document.add(clientMessage);
-            
+            	    "⚠️ Tout appareil non récupéré dans les 30 jours suivant son dépôt ne sera plus sous la responsabilité du prestataire.",
+            	    new Font(Font.HELVETICA, 10, Font.BOLD, new Color(255, 0, 0)) // ROUGE
+            	);
+            	clientMessage.setAlignment(Element.ALIGN_CENTER);
+            	clientMessage.setSpacingBefore(5);
+            	clientMessage.setSpacingAfter(5);
+            	document.add(clientMessage);
             // Ligne de découpage
             Paragraph separator = new Paragraph(
                 "— — — — — — — — — — — — — — — — — — — — — — — — — — — — — — — — — — — — — — —",
                 new Font(Font.HELVETICA, 10, Font.NORMAL)
             );
             separator.setSpacingBefore(5);
-            separator.setSpacingAfter(8);
+            separator.setSpacingAfter(10);
             document.add(separator);
             
-            // ========== PARTIE INFÉRIEURE - POUR LE TECHNICIEN ==========
+            // ========== PARTIE INFRIEURE - POUR LE TECHNICIEN ==========
             PdfPTable techTable = new PdfPTable(2);
             techTable.setWidthPercentage(100);
             techTable.setWidths(new float[]{35, 65});
@@ -179,8 +186,14 @@ public class PdfExportInterneService {
             addSectionTitle(techTable, "🔧 INFORMATIONS TECHNICIEN", COLOR_PRIMARY, 2);
             addRow(techTable, "N° Ordre :", getValue(numeroOrdre), labelFont, valueFont);
             addRow(techTable, "Équipement :", getValue(equipement), labelFont, valueFont);
-            addRow(techTable, "Référence :", getValue(reference), labelFont, referenceFont);
-            addRow(techTable, "Date de réclamation :", formatDate(dateIntervention), labelFont, valueFont);
+            addRow(techTable, "N° de série :", getValue(reference), labelFont, referenceFont);
+            
+            // ✅ CORRECTION : Date de réclamation
+            addRow(techTable, "Date de réclamation :", formatDate(dateReclamation), labelFont, valueFont);
+            
+            // ✅ CORRECTION : Date d'intervention
+            addRow(techTable, "Date d'intervention :", formatDate(dateIntervention), labelFont, valueFont);
+            
             addRow(techTable, "Réclamation :", getValue(reclamation), labelFont, reclamationFont);
             
             document.add(techTable);
@@ -190,7 +203,7 @@ public class PdfExportInterneService {
 
             // ========== ZONE RAPPORT D'INTERVENTION ==========
             Paragraph rapportTitle = new Paragraph("📝 RAPPORT D'INTERVENTION", new Font(Font.HELVETICA, 11, Font.BOLD, COLOR_SECONDARY));
-            rapportTitle.setSpacingBefore(10);
+            rapportTitle.setSpacingBefore(7);
             rapportTitle.setSpacingAfter(5);
             document.add(rapportTitle);
             
@@ -304,7 +317,7 @@ public class PdfExportInterneService {
                 new Font(Font.HELVETICA, 7, Font.ITALIC)
             );
             footer.setAlignment(Element.ALIGN_CENTER);
-            footer.setSpacingBefore(15);
+            footer.setSpacingBefore(5);
             document.add(footer);
             
             document.close();
@@ -321,7 +334,8 @@ public class PdfExportInterneService {
                                               String equipement,
                                               String reference,
                                               Double prixPaye,
-                                              String dateIntervention,
+                                              String dateReclamation,  // ✅ NOUVEAU
+                                              String dateIntervention, // ✅ GARDÉ
                                               String dateRecuperation,
                                               String reclamation) {
         
@@ -429,9 +443,14 @@ public class PdfExportInterneService {
             addRow(table, "N° Ordre :", getValue(numeroOrdre), labelFont, valueFont);
             addRow(table, "Client :", getValue(societe), labelFont, valueFont);
             addRow(table, "Équipement :", getValue(equipement), labelFont, valueFont);
-            addRow(table, "Référence :", getValue(reference), labelFont, referenceFont);
-            addRow(table, "Date de réclamation :", formatDate(dateIntervention), labelFont, valueFont);
+            addRow(table, "N° de série :", getValue(reference), labelFont, referenceFont);
+            
+            // ✅ CORRECTION : Date de réclamation
+            addRow(table, "Date de réclamation :", formatDate(dateReclamation), labelFont, valueFont);
+            
+            // ✅ CORRECTION : Date d'intervention
             addRow(table, "Date d'intervention :", formatDate(dateIntervention), labelFont, valueFont);
+            
             addRow(table, "Réclamation :", getValue(reclamation), labelFont, reclamationFont);
             
             // Montant payé en gros
@@ -461,14 +480,25 @@ public class PdfExportInterneService {
             message.setSpacingBefore(20);
             document.add(message);
             
-            // Footer
+            // Footer (Merci pour votre confiance)
             Paragraph footer = new Paragraph(
                 "Merci pour votre confiance !",
                 new Font(Font.HELVETICA, 10, Font.ITALIC, COLOR_PRIMARY)
             );
             footer.setAlignment(Element.ALIGN_CENTER);
             footer.setSpacingBefore(30);
+            footer.setSpacingAfter(10);
             document.add(footer);
+            
+            // ========== LIGNE DE DÉCOUPE AJOUTÉE ICI ==========
+            Paragraph separator = new Paragraph(
+                "— — — — — — — — — — — — — — — — — — — — — — — — — — — — — — — — — — — — — — —",
+                new Font(Font.HELVETICA, 10, Font.NORMAL, Color.GRAY)
+            );
+            separator.setAlignment(Element.ALIGN_CENTER);
+            separator.setSpacingBefore(10);
+            separator.setSpacingAfter(15);
+            document.add(separator);
             
             document.close();
             

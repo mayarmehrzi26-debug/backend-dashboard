@@ -1,19 +1,22 @@
 // src/app/models/transaction.model.ts
 import { Intervention } from '../core/services/api.service';
-
+// src/app/models/transaction.model.ts
 export type StatutPaiement = 'EN_ATTENTE' | 'PARTIEL' | 'PAYE' | 'EN_RETARD' | 'ANNULE';
 export type StatutTransaction = 'EN_ATTENTE' | 'VALIDE' | 'ANNULE';
 export type MethodePaiement = 'ESPECES' | 'CHEQUE' | 'VIREMENT' | 'CARTE';
 
 export interface Transaction {
   id?: number;
-  interventionId?: number;
   montant: number;
-  dateTransaction: string;
-  methode: MethodePaiement;
+  methode: string;
   reference?: string;
   notes?: string;
-  statut: StatutTransaction;
+  statut: 'VALIDE' | 'EN_ATTENTE' | 'ANNULE';
+  dateTransaction: string;
+  remise?: number;
+  remisePourcentage?: number;
+  promoCode?: string;
+  interventionId?: number;
 }
 
 export interface InterventionPaiement extends Intervention {
@@ -75,11 +78,4 @@ export function calculateMontantRestant(montantTotal?: number, montantPaye?: num
   const total = montantTotal || 0;
   const paye = montantPaye || 0;
   return Math.max(0, total - paye);
-}
-
-export function toStatutPaiement(value: string): StatutPaiement {
-  const validStatuses: StatutPaiement[] = ['EN_ATTENTE', 'PARTIEL', 'PAYE', 'EN_RETARD', 'ANNULE'];
-  return validStatuses.includes(value as StatutPaiement) 
-    ? value as StatutPaiement 
-    : 'EN_ATTENTE';
 }

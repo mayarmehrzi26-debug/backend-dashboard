@@ -1,0 +1,161 @@
+<!-- src/app/modules/profile/profile.component.html -->
+<div class="profile-container">
+  <div class="card">
+    <div class="card-header">
+      <h3 class="card-title">
+        <i class="bi bi-person-circle"></i> Mon Profil
+      </h3>
+      <div class="header-actions">
+        <button class="btn-refresh" (click)="refresh()" title="Rafraîchir">
+          <i class="bi bi-arrow-repeat"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- Message d'erreur -->
+    <div *ngIf="errorMessage" class="alert alert-danger">
+      <i class="bi bi-exclamation-triangle"></i>
+      {{ errorMessage }}
+      <button *ngIf="errorMessage.includes('reconnecter')" class="btn btn-sm btn-primary" (click)="refresh()">
+        Réessayer
+      </button>
+    </div>
+
+    <!-- Loading -->
+    <div *ngIf="loading" class="loading-container">
+      <i class="bi bi-hourglass-split spin-icon"></i>
+      <p>Chargement du profil...</p>
+    </div>
+
+    <div *ngIf="!loading && !errorMessage && user">
+
+      <!-- Informations utilisateur -->
+      <div class="profile-header">
+        <div class="avatar">
+          <i class="bi bi-person-fill"></i>
+        </div>
+        <div class="user-info">
+          <h2>{{ user.fullName || user.username }}</h2>
+          <p>
+            <span class="badge" [class]="getRoleClass(user.role)">
+              {{ getRoleLabel(user.role) }}
+            </span>
+          </p>
+          <p class="username">@{{ user.username }}</p>
+        </div>
+        <div class="user-status">
+          <span class="status-badge" [class.status-active]="user.enabled" [class.status-inactive]="!user.enabled">
+            {{ user.enabled ? '✅ Actif' : '❌ Inactif' }}
+          </span>
+        </div>
+      </div>
+
+      <div class="profile-body">
+        <!-- Formulaire Profil -->
+        <div class="profile-section">
+          <h4><i class="bi bi-pencil"></i> Informations personnelles</h4>
+          
+          <div *ngIf="successMessage" class="alert alert-success">
+            <i class="bi bi-check-circle"></i> {{ successMessage }}
+          </div>
+
+          <form [formGroup]="profileForm" (ngSubmit)="saveProfile()">
+            <div class="form-group">
+              <label><i class="bi bi-person"></i> Nom complet *</label>
+              <input type="text" class="form-control" formControlName="fullName" 
+                     placeholder="Votre nom complet">
+            </div>
+
+            <div class="form-group">
+              <label><i class="bi bi-envelope"></i> Email *</label>
+              <input type="email" class="form-control" formControlName="email" 
+                     placeholder="votre@email.com">
+            </div>
+
+            <div class="form-group">
+              <label><i class="bi bi-phone"></i> Téléphone</label>
+              <input type="tel" class="form-control" formControlName="telephone" 
+                     placeholder="+216 99 999 999">
+              <small class="text-muted">Numéro pour les notifications (SMS/WhatsApp)</small>
+            </div>
+
+            <div class="form-group">
+              <label><i class="bi bi-calendar"></i> Compte créé le</label>
+              <input type="text" class="form-control" [value]="formatDate(user.createdAt)" disabled>
+            </div>
+
+            <div class="form-group">
+              <label><i class="bi bi-clock"></i> Dernière connexion</label>
+              <input type="text" class="form-control" [value]="formatDate(user.lastLogin)" disabled>
+            </div>
+
+            <button type="submit" class="btn btn-primary" [disabled]="saving || profileForm.invalid">
+              <i class="bi" [class.bi-save]="!saving" [class.bi-hourglass-split]="saving"></i>
+              {{ saving ? 'Enregistrement...' : 'Enregistrer les modifications' }}
+            </button>
+          </form>
+        </div>
+
+        <!-- Changement de mot de passe -->
+        <div class="profile-section password-section">
+          <h4><i class="bi bi-key"></i> Changer le mot de passe</h4>
+
+          <div *ngIf="passwordSuccessMessage" class="alert alert-success">
+            <i class="bi bi-check-circle"></i> {{ passwordSuccessMessage }}
+          </div>
+          <div *ngIf="passwordErrorMessage" class="alert alert-danger">
+            <i class="bi bi-exclamation-triangle"></i> {{ passwordErrorMessage }}
+          </div>
+
+          <form [formGroup]="passwordForm" (ngSubmit)="changePassword()">
+            <div class="form-group">
+              <label><i class="bi bi-lock"></i> Mot de passe actuel *</label>
+              <div class="input-group">
+                <input [type]="showPassword ? 'text' : 'password'" 
+                       class="form-control" formControlName="oldPassword"
+                       placeholder="Votre mot de passe actuel">
+                <button type="button" class="btn-eye" (click)="togglePassword()">
+                  <i class="bi" [class.bi-eye]="!showPassword" [class.bi-eye-slash]="showPassword"></i>
+                </button>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label><i class="bi bi-lock-fill"></i> Nouveau mot de passe *</label>
+              <div class="input-group">
+                <input [type]="showNewPassword ? 'text' : 'password'" 
+                       class="form-control" formControlName="newPassword"
+                       placeholder="Nouveau mot de passe (min 6 caractères)">
+                <button type="button" class="btn-eye" (click)="toggleNewPassword()">
+                  <i class="bi" [class.bi-eye]="!showNewPassword" [class.bi-eye-slash]="showNewPassword"></i>
+                </button>
+              </div>
+              <small class="text-muted">Minimum 6 caractères</small>
+            </div>
+
+            <div class="form-group">
+              <label><i class="bi bi-lock-fill"></i> Confirmer le mot de passe *</label>
+              <div class="input-group">
+                <input [type]="showConfirmPassword ? 'text' : 'password'" 
+                       class="form-control" formControlName="confirmPassword"
+                       placeholder="Confirmer le nouveau mot de passe">
+                <button type="button" class="btn-eye" (click)="toggleConfirmPassword()">
+                  <i class="bi" [class.bi-eye]="!showConfirmPassword" [class.bi-eye-slash]="showConfirmPassword"></i>
+                </button>
+              </div>
+              <small *ngIf="passwordForm.errors?.['mismatch'] && passwordForm.get('confirmPassword')?.touched" 
+                     class="text-danger">
+                ⚠️ Les mots de passe ne correspondent pas
+              </small>
+            </div>
+
+            <button type="submit" class="btn btn-warning" [disabled]="passwordLoading || passwordForm.invalid">
+              <i class="bi" [class.bi-key]="!passwordLoading" [class.bi-hourglass-split]="passwordLoading"></i>
+              {{ passwordLoading ? 'Changement...' : 'Changer le mot de passe' }}
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

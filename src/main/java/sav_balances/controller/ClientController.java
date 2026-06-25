@@ -1,18 +1,20 @@
+// sav_balances/controller/ClientController.java
 package sav_balances.controller;
 
 import java.util.List;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import sav_balances.entity.Client;
 import sav_balances.service.ClientService;
+import sav_balances.dto.ClientWalletDTO;
 
 @RestController
 @RequestMapping("/api/clients")
 @CrossOrigin(origins = "http://localhost:4200")
-
 public class ClientController {
 
     @Autowired
@@ -105,5 +107,33 @@ public class ClientController {
     @GetMapping("/top-rated")
     public List<Client> getTopRatedClients() {
         return clientService.getTopRatedClients();
+    }
+
+    // ==================== NOUVEAUX ENDPOINTS PORTEFEUILLE ====================
+    
+    /**
+     * Récupère les statistiques du portefeuille d'un client
+     */
+    @GetMapping("/{id}/wallet")
+    public ResponseEntity<?> getClientWallet(@PathVariable Long id) {
+        try {
+            Map<String, Object> walletStats = clientService.getClientWalletStats(id);
+            return ResponseEntity.ok(walletStats);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Erreur: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Récupère les détails complets du client avec les statistiques du portefeuille
+     */
+    @GetMapping("/{id}/wallet-full")
+    public ResponseEntity<?> getClientWithWallet(@PathVariable Long id) {
+        try {
+            ClientWalletDTO clientWallet = clientService.getClientWithWallet(id);
+            return ResponseEntity.ok(clientWallet);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Erreur: " + e.getMessage());
+        }
     }
 }

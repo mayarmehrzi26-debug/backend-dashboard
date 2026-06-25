@@ -1224,3 +1224,68 @@ textarea.form-control {
     padding: 1px 5px;
   }
 }
+.tabs {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+  border-bottom: 2px solid #e2e8f0;
+  padding-bottom: 10px;
+}
+.tab-btn {
+  background: none;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px 8px 0 0;
+  font-weight: 500;
+  color: #6c757d;
+  cursor: pointer;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.tab-btn.active {
+  color: #0d4d2d;
+  background: #f0fdf4;
+  border-bottom: 3px solid #1a6d3f;
+}
+.tab-btn:hover {
+  background: #f8fafc;
+}
+
+.wallet-summary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 15px;
+  margin: 15px 0;
+}
+.wallet-stat {
+  background: #f8faf8;
+  padding: 15px;
+  border-radius: 12px;
+  text-align: center;
+  border: 1px solid #e8f0e8;
+}
+.wallet-stat .label {
+  display: block;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  color: #6c757d;
+  letter-spacing: 0.5px;
+}
+.wallet-stat .value {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #0d4d2d;
+}
+
+.table-sm th {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  color: #0d4d2d;
+  background: #f0fdf4;
+}
+.table-sm td {
+  font-size: 0.8rem;
+  vertical-align: middle;
+}

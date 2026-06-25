@@ -23,6 +23,7 @@ public class Intervention {
     private String technicien;
     private LocalDateTime dateReclamation;
     private LocalDateTime dateOrdre;
+    private String typeNotification;
     
     @Lob
     private String rapportIntervention;
@@ -166,4 +167,6 @@ public class Intervention {
 
     public List<Transaction> getTransactions() { return transactions; }
     public void setTransactions(List<Transaction> transactions) { this.transactions = transactions; }
+    
+    
 }

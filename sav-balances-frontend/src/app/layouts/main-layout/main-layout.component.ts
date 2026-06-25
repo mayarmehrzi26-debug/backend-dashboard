@@ -1,3 +1,4 @@
+// src/app/layouts/main-layout/main-layout.component.ts
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterOutlet, Router, NavigationEnd, Event } from '@angular/router';
@@ -16,15 +17,20 @@ export class MainLayoutComponent implements OnInit {
   isSidebarCollapsed = false;
   currentUser: any;
   pageTitle: string = 'Dashboard';
+  isAdmin: boolean = false;
 
-  // Mapping des routes vers les titres
   private routeTitles: { [key: string]: string } = {
-    '/app/dashboard': 'Tableau de Board',
-    '/app/clients': 'Gestion des clients',
-    '/app/interventions/externes': 'Gestion des Interventions Externes',
-    '/app/interventions/internes': 'Gestion des Interventions Internes',
-    '/app/balances': 'Gestion des Balances',
-    '/app/prestations': 'Gestion des Prestations'
+    '/app/dashboard': '📊 Tableau de Board',
+    '/app/clients': '👥 Gestion des clients',
+    '/app/interventions/externes': '🔧 Interventions Externes',
+    '/app/interventions/internes': '🔧 Interventions Internes',
+    '/app/calendrier': '📅 Calendrier des Interventions',  // ← AJOUT
+    '/app/balances': '⚖️ Gestion des Balances',
+    '/app/prestations': '🏷️ Gestion des Prestations',
+    '/app/users': '👥 Gestion des Utilisateurs',
+        '/app/profile': '👥 Gestion du Profile'
+
+    
   };
 
   constructor(
@@ -32,29 +38,26 @@ export class MainLayoutComponent implements OnInit {
     private router: Router
   ) {
     this.currentUser = this.authService.getCurrentUser();
+    this.isAdmin = this.authService.isAdmin();
     
     this.authService.currentUser$.subscribe(user => {
       this.currentUser = user;
+      this.isAdmin = this.authService.isAdmin();
     });
   }
 
   ngOnInit() {
-    // Mettre à jour le titre lors du changement de route
     this.router.events.pipe(
       filter((event: Event): event is NavigationEnd => event instanceof NavigationEnd)
     ).subscribe((event: NavigationEnd) => {
       this.updatePageTitle(event.urlAfterRedirects);
     });
 
-    // Mettre à jour le titre initial
     this.updatePageTitle(this.router.url);
   }
 
   private updatePageTitle(url: string) {
-    // Chercher le titre correspondant à la route
     let title = this.routeTitles[url];
-    
-    // Si le titre n'est pas trouvé, essayer de faire correspondre partiellement
     if (!title) {
       for (const [route, routeTitle] of Object.entries(this.routeTitles)) {
         if (url.startsWith(route)) {
@@ -63,15 +66,11 @@ export class MainLayoutComponent implements OnInit {
         }
       }
     }
-    
-    // Si toujours pas trouvé, définir un titre par défaut
     if (!title) {
-      // Extraire le dernier segment de l'URL
       const segments = url.split('/');
       const lastSegment = segments[segments.length - 1];
       title = lastSegment.charAt(0).toUpperCase() + lastSegment.slice(1) || 'Dashboard';
     }
-    
     this.pageTitle = title;
   }
 

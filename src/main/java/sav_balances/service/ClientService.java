@@ -1,19 +1,29 @@
+// sav_balances/service/ClientService.java
 package sav_balances.service;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import sav_balances.entity.Client;
+import sav_balances.entity.Transaction;
 import sav_balances.repository.ClientRepository;
+import sav_balances.repository.TransactionRepository;
+import sav_balances.dto.ClientWalletDTO;
+import sav_balances.dto.TransactionDTO;
 
 @Service
 public class ClientService {
 
     @Autowired
     private ClientRepository clientRepository;
+    
+    @Autowired
+    private TransactionRepository transactionRepository;
 
     public List<Client> getAllClients() {
         return clientRepository.findAll();
@@ -221,5 +231,50 @@ public class ClientService {
     
     public List<Client> getTopRatedClients() {
         return clientRepository.findTopRatedClients();
+    }
+
+    // ==================== NOUVELLES MÉTHODES PORTEFEUILLE ====================
+    
+    /**
+     * Récupère les statistiques du portefeuille d'un client
+     */
+    public Map<String, Object> getClientWalletStats(Long clientId) {
+        Client client = clientRepository.findById(clientId)
+                .orElseThrow(() -> new RuntimeException("Client non trouvé avec l'id: " + clientId));
+        
+        List<Transaction> transactions = transactionRepository.findByInterventionSociete(client.getSociete());
+        
+        List<Transaction> transactionsValides = transactions.stream()
+                .filter(t -> t.getStatut() == Transaction.StatutTransaction.VALIDE)
+                .toList();
+        
+        int nombreTransactions = transactionsValides.size();
+        double totalPaye = transactionsValides.stream()
+                .mapToDouble(Transaction::getMontant)
+                .sum();
+        double montantMoyen = nombreTransactions > 0 ? totalPaye / nombreTransactions : 0;
+        
+        Transaction derniereTransaction = transactionsValides.stream()
+                .max((t1, t2) -> t1.getDateTransaction().compareTo(t2.getDateTransaction()))
+                .orElse(null);
+        
+        Map<String, Object> stats = new HashMap<>();
+        stats.put("totalPaye", totalPaye);
+        stats.put("nombreTransactions", nombreTransactions);
+        stats.put("montantMoyen", montantMoyen);
+        stats.put("derniereTransaction", derniereTransaction != null ? new TransactionDTO(derniereTransaction) : null);
+        
+        return stats;
+    }
+
+    /**
+     * Récupère les détails complets du client avec les statistiques du portefeuille
+     */
+    public ClientWalletDTO getClientWithWallet(Long id) {
+        Client client = clientRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Client non trouvé avec l'id: " + id));
+        
+        List<Transaction> transactions = transactionRepository.findByInterventionSociete(client.getSociete());
+        return new ClientWalletDTO(client, transactions);
     }
 }

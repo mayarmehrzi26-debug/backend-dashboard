@@ -1,5 +1,8 @@
+/* src/app/modules/interventions-internes/interventions-internes.component.css */
+
 .interventions-container {
   animation: fadeIn 0.5s ease;
+  padding: 20px;
 }
 
 @keyframes fadeIn {
@@ -13,7 +16,7 @@
   }
 }
 
-/* Card styles */
+/* ==================== CARD STYLES ==================== */
 .card {
   background: white;
   border-radius: 16px;
@@ -49,7 +52,7 @@
   color: #1a6d3f;
 }
 
-/* Table styles */
+/* ==================== TABLE STYLES ==================== */
 .table-container {
   overflow-x: auto;
   margin-top: 15px;
@@ -63,9 +66,10 @@
 
 .table th,
 .table td {
-  padding: 12px;
+  padding: 12px 14px;
   text-align: left;
   border-bottom: 1px solid #e2e8f0;
+  vertical-align: middle;
 }
 
 .table th {
@@ -75,13 +79,22 @@
   text-transform: uppercase;
   letter-spacing: 0.5px;
   font-size: 0.7rem;
+  white-space: nowrap;
+}
+
+.table tbody tr {
+  transition: background 0.2s ease;
 }
 
 .table tbody tr:hover {
   background: #f8fafc;
 }
 
-/* Loading and empty states */
+.table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* ==================== LOADING & EMPTY STATES ==================== */
 .loading {
   text-align: center;
   padding: 40px;
@@ -102,6 +115,53 @@
   }
 }
 
+/* ==================== BADGE STYLES ==================== */
+.badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.7rem;
+  font-weight: 500;
+  line-height: 1.2;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.badge-success {
+  background: #28a745;
+  color: white;
+}
+
+.badge-warning {
+  background: #ffc107;
+  color: #333;
+}
+
+.badge-danger {
+  background: #dc3545;
+  color: white;
+}
+
+.badge-secondary {
+  background: #6c757d;
+  color: white;
+}
+
+.badge-info {
+  background: #17a2b8;
+  color: white;
+}
+
+.badge-dark {
+  background: #343a40;
+  color: white;
+}
+
+.badge-primary {
+  background: #007bff;
+  color: white;
+}
+
 /* Badge interne */
 .badge-interne {
   background: linear-gradient(135deg, #0a3a22 0%, #1a6d3f 100%);
@@ -115,7 +175,20 @@
   gap: 5px;
 }
 
-/* Buttons */
+/* Badge externe */
+.badge-externe {
+  background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+  color: white;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.7rem;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* ==================== BUTTON STYLES ==================== */
 .btn {
   padding: 8px 16px;
   border: none;
@@ -126,7 +199,16 @@
   transition: all 0.3s ease;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
+  min-height: 36px;
+  text-decoration: none;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none !important;
 }
 
 .btn-primary {
@@ -134,7 +216,7 @@
   color: white;
 }
 
-.btn-primary:hover {
+.btn-primary:hover:not(:disabled) {
   background: linear-gradient(135deg, #1a6d3f 0%, #2a8a52 100%);
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(26, 109, 63, 0.3);
@@ -145,7 +227,7 @@
   color: white;
 }
 
-.btn-secondary:hover {
+.btn-secondary:hover:not(:disabled) {
   background: #5a6268;
   transform: translateY(-2px);
 }
@@ -155,7 +237,7 @@
   color: #333;
 }
 
-.btn-warning:hover {
+.btn-warning:hover:not(:disabled) {
   background: #e0a800;
   transform: translateY(-2px);
 }
@@ -165,7 +247,7 @@
   color: white;
 }
 
-.btn-danger:hover {
+.btn-danger:hover:not(:disabled) {
   background: #c82333;
   transform: translateY(-2px);
 }
@@ -175,18 +257,37 @@
   color: white;
 }
 
-.btn-info:hover {
+.btn-info:hover:not(:disabled) {
   background: #138496;
+  transform: translateY(-2px);
+}
+
+.btn-success {
+  background: #28a745;
+  color: white;
+}
+
+.btn-success:hover:not(:disabled) {
+  background: #218838;
   transform: translateY(-2px);
 }
 
 .btn-sm {
   padding: 5px 10px;
   font-size: 0.75rem;
+  min-height: 30px;
   margin: 0 2px;
 }
 
-/* Modal styles */
+.btn-sm i {
+  font-size: 0.9rem;
+}
+
+.btn .bi {
+  font-size: 1rem;
+}
+
+/* ==================== MODAL STYLES ==================== */
 .modal {
   position: fixed;
   top: 0;
@@ -199,21 +300,33 @@
   justify-content: center;
   align-items: center;
   z-index: 1000;
-  animation: fadeIn 0.3s ease;
+  animation: modalFadeIn 0.3s ease;
+}
+
+@keyframes modalFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 .modal-content {
   background: white;
   border-radius: 16px;
   padding: 25px;
-  max-width: 600px;
+  max-width: 700px;
   width: 90%;
   max-height: 85vh;
   overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
 }
 
 .modal-large {
-  max-width: 600px;
+  max-width: 700px;
 }
 
 .modal-header {
@@ -222,7 +335,7 @@
   align-items: center;
   margin-bottom: 20px;
   padding-bottom: 15px;
-  border-bottom: 2px solid #e2e8f0;
+  border-bottom: 2px solid #f0fdf4;
 }
 
 .modal-header h3 {
@@ -233,21 +346,16 @@
 }
 
 .modal-header h3 i {
-  margin-right: 8px;
+  margin-right: 10px;
+  color: #1a6d3f;
 }
 
-.close {
-  cursor: pointer;
-  font-size: 1.5rem;
-  background: none;
-  border: none;
-  color: #a0aec0;
-  transition: all 0.3s;
-}
-
-.close:hover {
-  color: #dc3545;
-  transform: scale(1.1);
+.modal-header h3 small {
+  font-size: 0.8rem;
+  color: #6c757d;
+  font-weight: normal;
+  display: block;
+  margin-top: 2px;
 }
 
 .modal-footer {
@@ -257,11 +365,28 @@
   margin-top: 20px;
   padding-top: 15px;
   border-top: 1px solid #e2e8f0;
+  flex-wrap: wrap;
 }
 
-/* Form styles */
+.close {
+  cursor: pointer;
+  font-size: 1.8rem;
+  background: none;
+  border: none;
+  color: #999;
+  line-height: 1;
+  padding: 0 5px;
+  transition: all 0.3s;
+}
+
+.close:hover {
+  color: #dc3545;
+  transform: rotate(90deg);
+}
+
+/* ==================== FORM STYLES ==================== */
 .form-group {
-  margin-bottom: 15px;
+  margin-bottom: 16px;
 }
 
 .form-group label {
@@ -274,14 +399,20 @@
   letter-spacing: 0.5px;
 }
 
+.form-group label.required::after {
+  content: ' *';
+  color: #dc3545;
+}
+
 .form-control {
   width: 100%;
   padding: 10px 12px;
   border: 1px solid #e2e8f0;
   border-radius: 10px;
-  font-size: 0.85rem;
+  font-size: 0.9rem;
   transition: all 0.3s;
   background: white;
+  color: #222;
 }
 
 .form-control:focus {
@@ -290,20 +421,36 @@
   box-shadow: 0 0 0 3px rgba(26, 109, 63, 0.1);
 }
 
-.form-control:read-only {
-  background-color: #f8f9fa;
-  cursor: default;
+.form-control:disabled,
+.form-control[readonly] {
+  background: #f8f9fa;
+  color: #6c757d;
+  cursor: not-allowed;
+}
+
+.form-control[readonly] {
+  background: #f0fdf4;
+  color: #0d4d2d;
 }
 
 textarea.form-control {
   resize: vertical;
+  min-height: 60px;
   font-family: inherit;
+}
+
+select.form-control {
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236c757d' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 36px;
 }
 
 .form-row {
   display: flex;
   gap: 15px;
-  margin-bottom: 15px;
 }
 
 .form-row .form-group {
@@ -311,23 +458,107 @@ textarea.form-control {
   margin-bottom: 0;
 }
 
-/* Details modal */
+.text-muted {
+  font-size: 0.7rem;
+  color: #6c757d;
+  display: block;
+  margin-top: 4px;
+}
+
+/* Info client section */
+.info-client {
+  background: #f8faf8;
+  padding: 16px 18px;
+  border-radius: 12px;
+  margin: 15px 0;
+  border-left: 4px solid #1a6d3f;
+}
+
+.info-client h4 {
+  margin: 0 0 15px 0;
+  color: #0d4d2d;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+/* ==================== AUTOCOMPLETE STYLES ==================== */
+.autocomplete-list {
+  position: absolute;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 1001;
+  width: calc(100% - 2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  margin-top: 4px;
+}
+
+.autocomplete-item {
+  padding: 10px 14px;
+  cursor: pointer;
+  border-bottom: 1px solid #f0f0f0;
+  transition: background 0.2s;
+}
+
+.autocomplete-item:last-child {
+  border-bottom: none;
+}
+
+.autocomplete-item:hover {
+  background: #f0fdf4;
+}
+
+.autocomplete-item strong {
+  color: #0d4d2d;
+}
+
+.autocomplete-item small {
+  color: #6c757d;
+  font-size: 0.75rem;
+}
+
+/* ==================== DETAILS MODAL STYLES ==================== */
 .details-container {
   max-height: 60vh;
   overflow-y: auto;
   padding-right: 10px;
 }
 
+.details-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.details-container::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+.details-container::-webkit-scrollbar-thumb {
+  background: #b0c4b8;
+  border-radius: 3px;
+}
+
+.details-container::-webkit-scrollbar-thumb:hover {
+  background: #8aa396;
+}
+
 .details-section {
-  margin-bottom: 20px;
+  margin-bottom: 22px;
   padding-bottom: 15px;
   border-bottom: 1px solid #e2e8f0;
+}
+
+.details-section:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
 }
 
 .details-section h4 {
   margin-bottom: 12px;
   color: #0d4d2d;
-  font-size: 0.9rem;
+  font-size: 0.95rem;
   font-weight: 600;
   display: flex;
   align-items: center;
@@ -335,42 +566,63 @@ textarea.form-control {
 }
 
 .details-section h4 i {
+  color: #1a6d3f;
   font-size: 1rem;
 }
 
 .details-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
+  gap: 10px 20px;
 }
 
 .detail-item {
   display: flex;
   flex-direction: column;
+  padding: 6px 0;
 }
 
 .detail-item label {
   font-weight: 600;
   color: #6c757d;
   font-size: 0.65rem;
-  margin-bottom: 4px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  margin-bottom: 2px;
 }
 
 .detail-item span {
-  font-size: 0.85rem;
-  color: #333;
+  font-size: 0.9rem;
+  color: #222;
   font-weight: 500;
+  word-break: break-word;
+}
+
+.detail-item span strong {
+  color: #0d4d2d;
 }
 
 .report-box {
-  background: #f8f9fa;
-  padding: 15px;
+  background: #f8faf8;
+  padding: 15px 18px;
   border-radius: 10px;
   border-left: 4px solid #1a6d3f;
-  max-height: 250px;
+  max-height: 200px;
   overflow-y: auto;
+}
+
+.report-box::-webkit-scrollbar {
+  width: 6px;
+}
+
+.report-box::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+.report-box::-webkit-scrollbar-thumb {
+  background: #b0c4b8;
+  border-radius: 3px;
 }
 
 .report-pre {
@@ -379,44 +631,303 @@ textarea.form-control {
   font-size: 0.8rem;
   white-space: pre-wrap;
   color: #333;
-  line-height: 1.5;
+  line-height: 1.6;
 }
 
-/* Responsive */
+/* ==================== PAYMENT STYLES ==================== */
+
+/* Small payment progress bar */
+.payment-progress-small {
+  width: 60px;
+  height: 4px;
+  background: #e9ecef;
+  border-radius: 2px;
+  margin: 4px 0;
+  overflow: hidden;
+}
+
+.progress-bar-small {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+.progress-bar-small.progress-danger {
+  background: #dc3545;
+}
+
+.progress-bar-small.progress-warning {
+  background: #ffc107;
+}
+
+.progress-bar-small.progress-success {
+  background: #28a745;
+}
+
+/* Payment amounts */
+.payment-amounts {
+  font-size: 0.7rem;
+  display: flex;
+  gap: 3px;
+  align-items: center;
+}
+
+.payment-amounts .paid {
+  color: #28a745;
+  font-weight: 600;
+}
+
+.payment-amounts .total {
+  color: #6c757d;
+}
+
+.payment-amounts .separator {
+  color: #dee2e6;
+}
+
+/* Payment summary */
+.payment-summary {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 15px;
+  margin: 15px 0;
+}
+
+.payment-stat {
+  background: #f8faf8;
+  border-radius: 10px;
+  padding: 12px 10px;
+  text-align: center;
+  border: 1px solid #e8f0e8;
+}
+
+.payment-stat .label {
+  display: block;
+  font-size: 0.65rem;
+  color: #6c757d;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.payment-stat .value {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #0d4d2d;
+}
+
+.payment-stat .value.text-success {
+  color: #28a745;
+}
+
+.payment-stat .value.text-danger {
+  color: #dc3545;
+}
+
+/* Payment progress bar */
+.payment-progress {
+  background: #e9ecef;
+  border-radius: 10px;
+  height: 24px;
+  margin: 15px 0;
+  overflow: hidden;
+  position: relative;
+}
+
+.payment-progress .progress-bar {
+  height: 100%;
+  border-radius: 10px;
+  transition: width 0.8s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: white;
+}
+
+.payment-progress .progress-bar.progress-danger {
+  background: linear-gradient(90deg, #dc3545, #e74c3c);
+}
+
+.payment-progress .progress-bar.progress-warning {
+  background: linear-gradient(90deg, #ffc107, #fd7e14);
+}
+
+.payment-progress .progress-bar.progress-success {
+  background: linear-gradient(90deg, #28a745, #20c997);
+}
+
+/* Payment history */
+.payment-history {
+  margin-top: 15px;
+}
+
+.payment-history .header-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.payment-history h5 {
+  color: #0d4d2d;
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.payment-history .table-sm {
+  font-size: 0.8rem;
+}
+
+.payment-history .table-sm th {
+  background: #f8faf8;
+  color: #0d4d2d;
+  padding: 8px 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.65rem;
+  letter-spacing: 0.5px;
+}
+
+.payment-history .table-sm td {
+  padding: 8px 10px;
+  vertical-align: middle;
+}
+
+.payment-history .table-sm tbody tr:hover {
+  background: #f8faf8;
+}
+
+/* No data */
+.no-data {
+  text-align: center;
+  padding: 25px;
+  color: #6c757d;
+  font-size: 0.9rem;
+}
+
+.no-data i {
+  font-size: 1.8rem;
+  margin-bottom: 8px;
+  display: block;
+  color: #d1d5db;
+}
+
+/* ==================== RESPONSIVE ==================== */
 @media (max-width: 768px) {
+  .interventions-container {
+    padding: 10px;
+  }
+
+  .card {
+    padding: 15px;
+  }
+
   .card-header {
     flex-direction: column;
-    align-items: flex-start;
+    align-items: stretch;
   }
-  
+
+  .card-title {
+    font-size: 1rem;
+  }
+
   .form-row {
     flex-direction: column;
     gap: 15px;
   }
-  
+
   .form-row .form-group {
     margin-bottom: 15px;
   }
-  
+
   .details-grid {
     grid-template-columns: 1fr;
   }
-  
-  .modal-content {
-    padding: 20px;
+
+  .payment-summary {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
   }
-  
+
+  .modal-content {
+    padding: 18px;
+    max-width: 95%;
+  }
+
+  .modal-large {
+    max-width: 95%;
+  }
+
   .table th,
   .table td {
-    padding: 8px;
+    padding: 8px 10px;
     font-size: 0.75rem;
   }
-  
+
   .btn-sm {
     padding: 4px 6px;
+    font-size: 0.65rem;
+  }
+
+  .btn-sm i {
+    font-size: 0.8rem;
+  }
+
+  .btn {
+    font-size: 0.8rem;
+    padding: 6px 12px;
+    min-height: 32px;
+  }
+
+  .payment-stat .value {
+    font-size: 0.95rem;
   }
 }
-/* Ajouter à la fin du fichier interventions-internes.component.css */
+
+@media (max-width: 480px) {
+  .table th,
+  .table td {
+    padding: 6px 8px;
+    font-size: 0.7rem;
+  }
+
+  .modal-header h3 {
+    font-size: 1rem;
+  }
+
+  .modal-content {
+    padding: 15px;
+  }
+
+  .badge {
+    font-size: 0.6rem;
+    padding: 2px 8px;
+  }
+
+  .payment-summary {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .payment-stat {
+    padding: 8px;
+  }
+
+  .payment-stat .value {
+    font-size: 0.85rem;
+  }
+
+  .payment-amounts {
+    font-size: 0.6rem;
+  }
+
+  .payment-progress-small {
+    width: 40px;
+  }
+}
 
 /* ==================== SEARCH CONTAINER ==================== */
 .search-container {
@@ -514,214 +1025,162 @@ textarea.form-control {
     font-size: 0.9rem;
   }
 }
-/* Ajouter à la fin du fichier interventions-internes.component.css */
 
-/* Payment styles */
-.payment-progress-small {
-  width: 60px;
-  height: 4px;
-  background: #e9ecef;
-  border-radius: 2px;
-  margin: 4px 0;
-  overflow: hidden;
-}
-
-.progress-bar-small {
-  height: 100%;
-  border-radius: 2px;
-  transition: width 0.3s ease;
-}
-
-.progress-bar-small.progress-danger {
-  background: #dc3545;
-}
-
-.progress-bar-small.progress-warning {
-  background: #ffc107;
-}
-
-.progress-bar-small.progress-success {
-  background: #28a745;
-}
-
-.payment-amounts {
-  font-size: 0.75rem;
-  display: flex;
-  gap: 3px;
-  align-items: center;
-}
-
-.payment-amounts .paid {
-  color: #28a745;
-  font-weight: 600;
-}
-
-.payment-amounts .total {
-  color: #6c757d;
-}
-
-.payment-amounts .separator {
-  color: #dee2e6;
-}
-
-.payment-summary {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 15px;
-  margin: 15px 0;
-}
-
-.payment-stat {
-  background: #f8faf8;
-  border-radius: 10px;
-  padding: 12px;
-  text-align: center;
-}
-
-.payment-stat .label {
-  display: block;
-  font-size: 0.7rem;
-  color: #6c757d;
-  margin-bottom: 5px;
-}
-
-.payment-stat .value {
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: #0d4d2d;
-}
-
-.payment-stat .value.text-success {
-  color: #28a745;
-}
-
-.payment-stat .value.text-danger {
-  color: #dc3545;
-}
-
-.payment-progress {
-  background: #e9ecef;
-  border-radius: 10px;
-  height: 24px;
-  margin: 15px 0;
-  overflow: hidden;
+/* ==================== FORM GROUP OVERRIDES ==================== */
+.form-group {
   position: relative;
+  overflow: visible !important;
 }
 
-.payment-progress .progress-bar {
-  height: 100%;
-  border-radius: 10px;
-  transition: width 0.8s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: white;
+.form-group .autocomplete-list {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 9999;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  max-height: 200px;
+  overflow-y: auto;
+  margin-top: 2px;
 }
 
-.payment-progress .progress-bar.progress-danger {
-  background: linear-gradient(90deg, #dc3545, #e74c3c);
+/* Dans les modales */
+.modal-body .form-group {
+  overflow: visible !important;
 }
 
-.payment-progress .progress-bar.progress-warning {
-  background: linear-gradient(90deg, #ffc107, #fd7e14);
+/* ==================== ALERT STYLES ==================== */
+.alert-info {
+  background-color: #d1ecf1;
+  border-color: #bee5eb;
+  color: #0c5460;
+  padding: 0.75rem 1.25rem;
+  border-radius: 0.25rem;
 }
 
-.payment-progress .progress-bar.progress-success {
-  background: linear-gradient(90deg, #28a745, #20c997);
+.alert-warning {
+  background-color: #fff3cd;
+  border-color: #ffeeba;
+  color: #856404;
+  padding: 0.75rem 1.25rem;
+  border-radius: 0.25rem;
 }
 
-.payment-history {
-  margin-top: 15px;
+.alert {
+  border-radius: 0.25rem;
 }
 
-.payment-history h5 {
-  color: #0d4d2d;
-  margin: 0;
+.alert-info i, .alert-warning i {
+  margin-right: 5px;
 }
 
-.payment-history .table-sm {
-  font-size: 0.85rem;
-}
-
-.payment-history .table-sm th {
-  background: #f8faf8;
-  color: #0d4d2d;
-  padding: 8px;
-}
-
-.payment-history .table-sm td {
-  padding: 8px;
+/* ==================== BUTTON GROUP VERTICAL ==================== */
+.btn-group-vertical {
+  display: inline-flex;
+  flex-direction: column;
   vertical-align: middle;
 }
 
-.no-data {
-  text-align: center;
-  padding: 20px;
-  color: #6c757d;
-  font-size: 0.9rem;
+/* ==================== TEXT COLORS ==================== */
+.text-warning {
+  color: #856404 !important;
 }
 
-.no-data i {
-  font-size: 1.5rem;
-  margin-bottom: 5px;
-  display: block;
+.text-success {
+  color: #28a745 !important;
 }
 
-@media (max-width: 768px) {
-  .payment-summary {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 10px;
-  }
-}
-/* Ajouter à la fin du fichier interventions-internes.component.css */
-
-/* ==================== BADGES STATUT INTERVENTION ==================== */
-.badge-success {
-  background: #28a745;
-  color: white;
+.text-danger {
+  color: #dc3545 !important;
 }
 
+.text-info {
+  color: #17a2b8 !important;
+}
+
+/* ==================== BADGE WARNING ==================== */
 .badge-warning {
-  background: #ffc107;
-  color: #333;
+  background-color: #ffc107;
+  color: #212529;
 }
 
-.badge-danger {
-  background: #dc3545;
-  color: white;
+/* ==================== DETAILS ITEMS ==================== */
+.detail-item .badge {
+  font-size: 0.7rem;
+  padding: 0.25rem 0.5rem;
 }
 
-.badge-secondary {
-  background: #6c757d;
-  color: white;
-}
-
-/* ==================== BOUTONS ACTIONS ==================== */
-.btn-group-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-}
-
-.btn-group-actions .btn-sm {
-  margin: 0;
-}
-
-/* ==================== MODAL SMALL ==================== */
-.modal-small .modal-content {
-  max-width: 450px;
-}
-
-/* ==================== RESPONSIVE ==================== */
+/* ==================== RESPONSIVE ACTIONS ==================== */
 @media (max-width: 768px) {
-  .btn-group-actions {
-    flex-direction: column;
-    gap: 4px;
+  .btn-group-vertical .btn-group {
+    flex-wrap: wrap;
   }
   
-  .btn-group-actions .btn-sm {
-    width: 100%;
+  .btn-group-vertical .btn-group .btn-sm {
+    font-size: 0.7rem;
+    padding: 0.2rem 0.4rem;
   }
+}
+
+/* ==================== BADGE STATUT INTERVENTION ARRONDI ==================== */
+.badge {
+  display: inline-block;
+  padding: 4px 14px;
+  border-radius: 50px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  line-height: 1.4;
+  text-align: center;
+  white-space: nowrap;
+  letter-spacing: 0.3px;
+  border: 1px solid transparent;
+}
+
+/* STATUT EN ATTENTE */
+.badge-secondary {
+  background-color: #6c757d;
+  color: white;
+  border-color: #6c757d;
+}
+
+/* STATUT EN COURS / CONFIRME */
+.badge-warning {
+  background-color: #ffc107;
+  color: #212529;
+  border-color: #ffc107;
+}
+
+/* STATUT ANNULE */
+.badge-danger {
+  background-color: #dc3545;
+  color: white;
+  border-color: #dc3545;
+}
+
+/* STATUT TERMINE */
+.badge-success {
+  background-color: #28a745;
+  color: white;
+  border-color: #28a745;
+}
+
+/* Badge personnalisé pour "Non encore définie" */
+.badge-warning[style*="font-size: 0.7rem"] {
+  background-color: #ffc107;
+  color: #212529;
+  border-radius: 50px;
+  padding: 4px 14px;
+  font-weight: 600;
+}
+
+/* Badge pour "Non payé" */
+.badge-secondary[style*="font-size: 0.7rem"] {
+  background-color: #6c757d;
+  color: white;
+  border-radius: 50px;
+  padding: 4px 14px;
+  font-weight: 600;
 }

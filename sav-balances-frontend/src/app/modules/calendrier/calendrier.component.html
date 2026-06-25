@@ -1,0 +1,302 @@
+<!-- src/app/modules/calendrier/calendrier.component.html -->
+<div class="calendrier-container">
+  <div class="card">
+    <!-- En-tête -->
+    <div class="header">
+      <div class="header-left">
+        <h3 class="card-title">
+          <i class="bi bi-calendar3"></i> Calendrier des Interventions
+          <small class="card-subtitle">
+            <span *ngIf="isTechnicien">🔧 Vue Technicien</span>
+            <span *ngIf="isAdmin">👑 Vue Administrateur</span>
+            <span *ngIf="isUser">👤 Vue Utilisateur</span>
+          </small>
+        </h3>
+      </div>
+      <div class="header-right">
+        <button class="btn btn-secondary" (click)="resetFilters()" title="Réinitialiser les filtres">
+          <i class="bi bi-arrow-counterclockwise"></i> Réinitialiser
+        </button>
+      </div>
+    </div>
+
+    <!-- Filtres -->
+    <div class="filters-container">
+      <!-- Filtre Type -->
+      <div class="filter-group">
+        <label><i class="bi bi-layers"></i> Type</label>
+        <select class="form-control" [(ngModel)]="filterType" (change)="filterByType()">
+          <option value="">Tous</option>
+          <option value="INTERNE">🏠 Interne</option>
+          <option value="EXTERNE">🌍 Externe</option>
+        </select>
+      </div>
+
+      <!-- Filtre Statut -->
+      <div class="filter-group">
+        <label><i class="bi bi-tag"></i> Statut</label>
+        <select class="form-control" [(ngModel)]="filterStatus" (change)="filterByStatus()">
+          <option value="">Tous</option>
+          <option *ngFor="let status of statusOptions" [value]="status">
+            {{ status === 'TOUS' ? 'Tous' : getStatusLabel(status) }}
+          </option>
+        </select>
+      </div>
+
+      <!-- Filtre Technicien - visible uniquement pour ADMIN -->
+      <div class="filter-group" *ngIf="isAdmin">
+        <label><i class="bi bi-person"></i> Technicien</label>
+        <select class="form-control" [(ngModel)]="filterTechnicien" (change)="filterByTechnicien()">
+          <option value="">Tous</option>
+          <option *ngFor="let tech of techniciensList" [value]="tech">{{ tech }}</option>
+        </select>
+      </div>
+
+      <!-- Statistiques -->
+      <div class="filter-stats">
+        <span class="stat-item" style="background: #e8f5e9; border-color: #4caf50;">
+          <span class="stat-dot" style="background: #4caf50;"></span>
+          Planifiées: {{ interventionsAvecDate.length }}
+        </span>
+        <span class="stat-item" style="background: #fff3cd; border-color: #ffc107;">
+          <span class="stat-dot" style="background: #ffc107;"></span>
+          À planifier: {{ interventionsSansDate.length }}
+        </span>
+        <span class="stat-item" [class.stat-urgent]="filteredInterventions.filter(i => i.statutIntervention === 'ANNULE').length > 0">
+          <span class="stat-dot" style="background: #dc3545;"></span>
+          Annulées: {{ filteredInterventions.filter(i => i.statutIntervention === 'ANNULE').length }}
+        </span>
+        <span class="stat-item">
+          <span class="stat-dot" style="background: #28a745;"></span>
+          Terminées: {{ filteredInterventions.filter(i => i.statutIntervention === 'TERMINE').length }}
+        </span>
+      </div>
+    </div>
+
+    <!-- Calendrier -->
+    <div class="calendar-wrapper" *ngIf="!loading">
+      <full-calendar 
+        [options]="calendarOptions"
+        [events]="calendarEvents"
+        class="full-calendar"
+      ></full-calendar>
+    </div>
+
+    <!-- Loading -->
+    <div *ngIf="loading" class="loading-container">
+      <i class="bi bi-hourglass-split"></i>
+      <span>Chargement du calendrier...</span>
+    </div>
+
+    <!-- Interventions sans date -->
+    <div class="no-date-section" *ngIf="interventionsSansDate.length > 0">
+      <h5>
+        <i class="bi bi-clock-history"></i>
+        Interventions à planifier
+        <span class="badge badge-warning">{{ interventionsSansDate.length }}</span>
+      </h5>
+      <div class="no-date-list">
+        <div *ngFor="let i of interventionsSansDate" class="no-date-item">
+          <span class="badge" [class]="getStatusClass(i.statutIntervention)">{{ i.numeroOrdre }}</span>
+          <span class="badge badge-type" [class.badge-type-interne]="i.type === 'INTERNE'" [class.badge-type-externe]="i.type === 'EXTERNE'">
+            {{ i.type === 'INTERNE' ? '🏠' : '🌍' }}
+          </span>
+          <span>{{ i.societe }} - {{ i.reclamation }}</span>
+          <button *ngIf="isInterventionPlanifiable(i)" 
+                  class="btn btn-success btn-sm" 
+                  (click)="ouvrirPlanification(i)"
+                  title="Planifier cette intervention">
+            <i class="bi bi-calendar-plus"></i> Planifier
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Légende -->
+    <div class="legend">
+      <span class="legend-item">
+        <span class="legend-color" style="background: #17a2b8;"></span> En attente
+      </span>
+      <span class="legend-item">
+        <span class="legend-color" style="background: #ffc107;"></span> En cours
+      </span>
+      <span class="legend-item">
+        <span class="legend-color" style="background: #28a745;"></span> Terminé
+      </span>
+      <span class="legend-item">
+        <span class="legend-color" style="background: #dc3545;"></span> Annulé
+      </span>
+      <span class="legend-item" style="border: 2px dashed #1a6d3f; padding: 2px 10px; border-radius: 12px;">
+        <i class="bi bi-hand-index-thumb"></i> Cliquez sur une intervention pour la planifier
+      </span>
+    </div>
+  </div>
+
+  <!-- ===== MODAL DÉTAILS ===== -->
+  <div class="modal" *ngIf="showDetailsModal">
+    <div class="modal-content modal-large">
+      <div class="modal-header">
+        <h3>
+          <i class="bi bi-tools"></i>
+          Détails - N° {{ selectedIntervention?.numeroOrdre }}
+          <span class="badge" [style.background]="selectedIntervention?.type === 'INTERNE' ? '#17a2b8' : '#28a745'" style="color: white; font-size: 0.7rem; margin-left: 10px;">
+            {{ selectedIntervention?.type === 'INTERNE' ? '🏠 Interne' : '🌍 Externe' }}
+          </span>
+        </h3>
+        <button class="close" (click)="closeDetailsModal()">&times;</button>
+      </div>
+      
+      <div *ngIf="selectedIntervention" class="details-container">
+        <div class="details-grid">
+          <div class="detail-item">
+            <label>Société</label>
+            <span>{{ selectedIntervention.societe || '-' }}</span>
+          </div>
+          <div class="detail-item">
+            <label>Équipement</label>
+            <span>{{ selectedIntervention.bascule || '-' }}</span>
+          </div>
+          <div class="detail-item">
+            <label>Technicien</label>
+            <span>{{ selectedIntervention.technicien || 'Non assigné' }}</span>
+          </div>
+          <div class="detail-item">
+            <label>Statut</label>
+            <span class="badge" [class]="getStatusClass(selectedIntervention.statutIntervention)">
+              {{ getStatusLabel(selectedIntervention.statutIntervention) }}
+            </span>
+          </div>
+          <div class="detail-item">
+            <label>Date réclamation</label>
+            <span>{{ formatDate(selectedIntervention.dateReclamation) }}</span>
+          </div>
+          <div class="detail-item">
+            <label>Date intervention</label>
+            <span>{{ selectedIntervention.dateOrdre ? formatDate(selectedIntervention.dateOrdre) : 'Non définie' }}</span>
+          </div>
+          <div class="detail-item">
+            <label>Montant</label>
+            <span>{{ selectedIntervention.montantTotal || 0 }} DT</span>
+          </div>
+          <div class="detail-item">
+            <label>Réclamation</label>
+            <span>{{ selectedIntervention.reclamation || '-' }}</span>
+          </div>
+        </div>
+        
+        <div class="modal-actions">
+          <button *ngIf="isInterventionPlanifiable(selectedIntervention)" 
+                  class="btn btn-success" 
+                  (click)="ouvrirPlanification(selectedIntervention); closeDetailsModal()">
+            <i class="bi bi-calendar-plus"></i> Planifier
+          </button>
+          <button class="btn btn-secondary" (click)="closeDetailsModal()">Fermer</button>
+          <button class="btn btn-danger" (click)="exportFormulaire(selectedIntervention.id!)">
+            <i class="bi bi-file-pdf"></i> PDF
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== MODAL PLANIFICATION ===== -->
+  <div class="modal" *ngIf="showPlanificationModal">
+    <div class="modal-content modal-medium">
+      <div class="modal-header" style="background: linear-gradient(135deg, #0a3a22 0%, #0d4d2d 50%, #1a6d3f 100%); color: white;">
+        <h3 style="color: white;">
+          <i class="bi bi-calendar-plus"></i>
+          Planifier l'intervention
+          <small style="display: block; font-size: 0.8rem; opacity: 0.8; font-weight: normal;">
+            {{ selectedIntervention?.numeroOrdre }} - {{ selectedIntervention?.societe }}
+          </small>
+        </h3>
+        <button class="close" (click)="closePlanificationModal()" style="color: white;">&times;</button>
+      </div>
+      
+      <div style="padding: 24px;">
+        <!-- Informations de l'intervention -->
+        <div class="info-box" *ngIf="selectedIntervention">
+          <div class="info-row">
+            <span class="info-label">🏢 Société :</span>
+            <span class="info-value">{{ selectedIntervention.societe }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">📋 Réclamation :</span>
+            <span class="info-value">{{ selectedIntervention.reclamation }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">📍 Adresse :</span>
+            <span class="info-value">{{ selectedIntervention.adresse || 'Non spécifiée' }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">📌 Statut actuel :</span>
+            <span class="badge" [class]="getStatusClass(selectedIntervention.statutIntervention)">
+              {{ getStatusLabel(selectedIntervention.statutIntervention) }}
+            </span>
+          </div>
+        </div>
+
+        <hr *ngIf="selectedIntervention">
+
+        <!-- Date et heure -->
+        <div class="form-group">
+          <label><i class="bi bi-calendar-date"></i> Date d'intervention *</label>
+          <input type="date" class="form-control" [(ngModel)]="selectedDate" 
+                 [min]="todayDate"
+                 (change)="onDateChange()"
+                 style="border: 2px solid #e8f0ec; border-radius: 8px; padding: 10px;">
+        </div>
+
+        <div class="form-group">
+          <label><i class="bi bi-clock"></i> Heure *</label>
+          <select class="form-control" [(ngModel)]="selectedTime" (change)="onTimeChange()"
+                  style="border: 2px solid #e8f0ec; border-radius: 8px; padding: 10px;">
+            <option *ngFor="let hour of ['08:00','08:30','09:00','09:30','10:00','10:30','11:00','11:30','12:00','12:30','13:00','13:30','14:00','14:30','15:00','15:30','16:00','16:30','17:00','17:30']" [value]="hour">
+              {{ hour }}
+            </option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label><i class="bi bi-person"></i> Technicien *</label>
+          <select class="form-control" [(ngModel)]="selectedTechnicien" (change)="onTechnicienChange()"
+                  style="border: 2px solid #e8f0ec; border-radius: 8px; padding: 10px;">
+            <option value="">-- Sélectionner un technicien --</option>
+            <option *ngFor="let tech of techniciensList" [value]="tech">{{ tech }}</option>
+          </select>
+          <small class="text-muted" *ngIf="isTechnicien">
+            👨‍🔧 Vous êtes technicien, vous pouvez vous assigner cette intervention.
+          </small>
+        </div>
+
+        <!-- Message de conflit -->
+        <div class="form-group" *ngIf="selectedTechnicien && selectedDate && selectedTime">
+          <div class="alert" [class.alert-success]="!hasConflict" [class.alert-danger]="hasConflict">
+            <i class="bi" [class.bi-check-circle]="!hasConflict" [class.bi-exclamation-triangle]="hasConflict"></i>
+            {{ conflictMessage }}
+          </div>
+        </div>
+
+        <div class="alert alert-info" style="margin: 15px 0;">
+          <i class="bi bi-info-circle"></i>
+          <strong>Résumé :</strong>
+          <ul style="margin: 10px 0 0 20px;">
+            <li>Intervention : <strong>{{ selectedIntervention?.numeroOrdre }}</strong></li>
+            <li>Date : <strong>{{ selectedDate ? (selectedDate | date:'dd/MM/yyyy') : 'Non définie' }}</strong></li>
+            <li>Heure : <strong>{{ selectedTime || 'Non définie' }}</strong></li>
+            <li>Technicien : <strong>{{ selectedTechnicien || 'Non assigné' }}</strong></li>
+            <li>Le statut passera à : <strong>🟡 CONFIRMÉ</strong></li>
+          </ul>
+        </div>
+
+        <div class="modal-actions" style="border-top: none; padding-top: 0;">
+          <button class="btn btn-secondary" (click)="closePlanificationModal()">Annuler</button>
+          <button class="btn btn-success" (click)="planifierIntervention()" 
+                  [disabled]="!selectedIntervention || !selectedDate || !selectedTechnicien">
+            <i class="bi bi-check-circle"></i> Planifier
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

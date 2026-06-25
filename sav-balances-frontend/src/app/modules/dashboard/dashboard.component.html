@@ -1,3 +1,4 @@
+<!-- src/app/modules/dashboard/dashboard.component.html -->
 <div class="dashboard">
   <div *ngIf="errorMessage" class="error-message">
     <i class="bi bi-exclamation-triangle"></i>
@@ -7,44 +8,113 @@
 
   <div *ngIf="loading" class="loading-overlay">
     <i class="bi bi-hourglass-split spin-icon"></i> 
-    <p>Mise à jour des données en cours...</p>
+    <p>Chargement des données...</p>
   </div>
 
   <div *ngIf="!loading">
     
+    <!-- Statistiques -->
     <div class="stats-grid">
-      <div class="stat-card">
+      <!-- Clients - visible pour ADMIN et USER uniquement -->
+      <div class="stat-card" *ngIf="isAdmin || isUser">
         <i class="bi bi-people"></i>
         <h3>{{ stats.totalClients }}</h3>
         <p>Clients</p>
       </div>
+      
+      <!-- Interventions Externes - visible pour tous -->
       <div class="stat-card stat-externe">
         <i class="bi bi-globe"></i>
-        <h3>{{ stats.totalInterventionsExternes }}</h3>
+        <h3 *ngIf="!isTechnicien">{{ stats.totalInterventionsExternes }}</h3>
+        <h3 *ngIf="isTechnicien">{{ recentInterventionsExternes.length }}</h3>
         <p>Interventions Externes</p>
+        <small *ngIf="isTechnicien" class="stat-subtitle">(Mes interventions)</small>
       </div>
+      
+      <!-- Interventions Internes - visible pour tous -->
       <div class="stat-card stat-interne">
         <i class="bi bi-house"></i>
-        <h3>{{ stats.totalInterventionsInternes }}</h3>
+        <h3 *ngIf="!isTechnicien">{{ stats.totalInterventionsInternes }}</h3>
+        <h3 *ngIf="isTechnicien">{{ recentInterventionsInternes.length }}</h3>
         <p>Interventions Internes</p>
+        <small *ngIf="isTechnicien" class="stat-subtitle">(Mes interventions)</small>
       </div>
-      <div class="stat-card">
-        <i class="bi bi-calculator"></i>
-        <h3>{{ stats.totalBalances }}</h3>
-        <p>Balances</p>
+      
+      <!-- Utilisateurs - visible uniquement pour ADMIN -->
+      <div class="stat-card" *ngIf="isAdmin">
+        <i class="bi bi-person-badge"></i>
+        <h3>{{ stats.totalUsers }}</h3>
+        <p>Utilisateurs</p>
       </div>
     </div>
 
+    <!-- ===== SECTION TECHNICIEN : Mes Interventions ===== -->
+    <div class="card" *ngIf="isTechnicien && mesInterventions.length > 0">
+      <div class="card-header">
+        <h3 class="card-title">
+          <i class="bi bi-person-badge"></i> Mes Interventions ({{ mesInterventions.length }})
+        </h3>
+        <button class="btn-refresh" (click)="refresh()" title="Rafraîchir">
+          <i class="bi bi-arrow-repeat"></i>
+        </button>
+      </div>
+      
+      <div class="table-container">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>N° Ordre</th>
+              <th>Type</th>
+              <th>Société</th>
+              <th>Réclamation</th>
+              <th>Date Réclamation</th>
+              <th>Date Intervention</th>
+              <th>Statut</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let intervention of mesInterventions">
+              <td><strong>{{ intervention.numeroOrdre }}</strong></td>
+              <td>
+                <span class="badge" [class.badge-info]="intervention.type === 'INTERNE'" [class.badge-success]="intervention.type === 'EXTERNE'">
+                  {{ intervention.type === 'INTERNE' ? '🏠 Interne' : '🌍 Externe' }}
+                </span>
+              </td>
+              <td>{{ intervention.societe }}</td>
+              <td>{{ intervention.reclamation }}</td>
+              <td>{{ intervention.dateReclamation | date:'dd/MM/yyyy HH:mm' }}</td>
+              <td>
+                <span *ngIf="intervention.dateOrdre">{{ intervention.dateOrdre | date:'dd/MM/yyyy HH:mm' }}</span>
+                <span *ngIf="!intervention.dateOrdre" class="badge badge-warning">Non définie</span>
+              </td>
+              <td>
+                <span class="badge" [class]="getStatutClass(intervention.statutIntervention)">
+                  {{ getStatutLabel(intervention.statutIntervention) }}
+                </span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Interventions Externes -->
     <div class="card">
       <div class="card-header">
-        <h3 class="card-title">Dernières Interventions Externes</h3>
+        <h3 class="card-title">
+          <i class="bi bi-globe"></i> 
+          <span *ngIf="!isTechnicien">Dernières Interventions Externes</span>
+          <span *ngIf="isTechnicien">Mes Interventions Externes</span>
+        </h3>
         <button class="btn-refresh" (click)="refresh()" title="Rafraîchir">
           <i class="bi bi-arrow-repeat"></i>
         </button>
       </div>
       
       <div *ngIf="recentInterventionsExternes.length === 0" class="no-data">
-        <i class="bi bi-inbox"></i> Aucune intervention externe trouvée
+        <i class="bi bi-inbox"></i> 
+        <span *ngIf="!isTechnicien">Aucune intervention externe trouvée</span>
+        <span *ngIf="isTechnicien">Aucune intervention externe assignée</span>
       </div>
       
       <div *ngIf="recentInterventionsExternes.length > 0" class="table-container">
@@ -55,32 +125,50 @@
               <th>Société</th>
               <th>Réclamation</th>
               <th>Technicien</th>
-              <th>Date</th>
+              <th>Date Réclamation</th>
+              <th>Date Intervention</th>
+              <th>Statut</th>
             </tr>
           </thead>
           <tbody>
             <tr *ngFor="let intervention of recentInterventionsExternes">
-              <td>{{ intervention.numeroOrdre || '-' }}</td>
-              <td>{{ intervention.societe || '-' }}</td>
-              <td>{{ intervention.reclamation || '-' }}</td>
-              <td>{{ intervention.technicien || '-' }}</td>
-              <td>{{ intervention.dateOrdre | date:'dd/MM/yyyy' }}</td>
+              <td><strong>{{ intervention.numeroOrdre }}</strong></td>
+              <td>{{ intervention.societe }}</td>
+              <td>{{ intervention.reclamation }}</td>
+              <td>{{ intervention.technicien }}</td>
+              <td>{{ intervention.dateReclamation | date:'dd/MM/yyyy HH:mm' }}</td>
+              <td>
+                <span *ngIf="intervention.dateOrdre">{{ intervention.dateOrdre | date:'dd/MM/yyyy HH:mm' }}</span>
+                <span *ngIf="!intervention.dateOrdre" class="badge badge-warning">Non définie</span>
+              </td>
+              <td>
+                <span class="badge" [class]="getStatutClass(intervention.statutIntervention)">
+                  {{ getStatutLabel(intervention.statutIntervention) }}
+                </span>
+              </td>
             </tr>
           </tbody>
         </table>
       </div>
     </div>
 
+    <!-- Interventions Internes -->
     <div class="card">
       <div class="card-header">
-        <h3 class="card-title">Dernières Interventions Internes</h3>
+        <h3 class="card-title">
+          <i class="bi bi-house"></i>
+          <span *ngIf="!isTechnicien">Dernières Interventions Internes</span>
+          <span *ngIf="isTechnicien">Mes Interventions Internes</span>
+        </h3>
         <button class="btn-refresh" (click)="refresh()" title="Rafraîchir">
           <i class="bi bi-arrow-repeat"></i>
         </button>
       </div>
       
       <div *ngIf="recentInterventionsInternes.length === 0" class="no-data">
-        <i class="bi bi-inbox"></i> Aucune intervention interne trouvée
+        <i class="bi bi-inbox"></i>
+        <span *ngIf="!isTechnicien">Aucune intervention interne trouvée</span>
+        <span *ngIf="isTechnicien">Aucune intervention interne assignée</span>
       </div>
       
       <div *ngIf="recentInterventionsInternes.length > 0" class="table-container">
@@ -88,19 +176,30 @@
           <thead>
             <tr>
               <th>N° Ordre</th>
+              <th>Société</th>
               <th>Équipement</th>
               <th>Réclamation</th>
-              <th>Technicien</th>
-              <th>Date</th>
+              <th>Date Réclamation</th>
+              <th>Date Intervention</th>
+              <th>Statut</th>
             </tr>
           </thead>
           <tbody>
             <tr *ngFor="let intervention of recentInterventionsInternes">
-              <td>{{ intervention.numeroOrdre || '-' }}</td>
-              <td>{{ intervention.bascule || '-' }}</td>
-              <td>{{ intervention.reclamation || '-' }}</td>
-              <td>{{ intervention.technicien || '-' }}</td>
-              <td>{{ intervention.dateOrdre | date:'dd/MM/yyyy' }}</td>
+              <td><strong>{{ intervention.numeroOrdre }}</strong></td>
+              <td>{{ intervention.societe }}</td>
+              <td>{{ intervention.bascule }}</td>
+              <td>{{ intervention.reclamation }}</td>
+              <td>{{ intervention.dateReclamation | date:'dd/MM/yyyy HH:mm' }}</td>
+              <td>
+                <span *ngIf="intervention.dateOrdre">{{ intervention.dateOrdre | date:'dd/MM/yyyy HH:mm' }}</span>
+                <span *ngIf="!intervention.dateOrdre" class="badge badge-warning">Non définie</span>
+              </td>
+              <td>
+                <span class="badge" [class]="getStatutClass(intervention.statutIntervention)">
+                  {{ getStatutLabel(intervention.statutIntervention) }}
+                </span>
+              </td>
             </tr>
           </tbody>
         </table>

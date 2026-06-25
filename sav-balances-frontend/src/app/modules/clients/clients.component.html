@@ -1,44 +1,25 @@
+<!-- src/app/modules/clients/clients.component.html -->
 <div class="clients-container">
   <div class="card">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
       <h3 class="card-title">Liste des Clients</h3>
       <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-        <button class="btn btn-secondary" (click)="refresh()" style="margin-right: 10px;">
-          <i class="bi bi-arrow-repeat"></i> Rafraîchir
-        </button>
-        <button class="btn btn-primary" (click)="openForm()">
-          <i class="bi bi-plus-circle"></i> Nouveau Client
-        </button>
+        <button class="btn btn-secondary" (click)="refresh()"><i class="bi bi-arrow-repeat"></i> Rafraîchir</button>
+        <button class="btn btn-primary" (click)="openForm()"><i class="bi bi-plus-circle"></i> Nouveau Client</button>
       </div>
     </div>
 
-    <!-- ==================== BARRE DE RECHERCHE ==================== -->
+    <!-- Barre de recherche -->
     <div class="search-container">
       <div class="search-box">
         <i class="bi bi-search search-icon"></i>
-        <input 
-          type="text" 
-          class="search-input" 
-          placeholder="Rechercher par société, responsable, téléphone, email ou adresse..."
-          [(ngModel)]="searchTerm"
-          (input)="filterClients()"
-          (keyup.escape)="clearSearch()"
-        />
-        <button 
-          class="search-clear" 
-          *ngIf="searchTerm.length > 0" 
-          (click)="clearSearch()"
-          title="Effacer la recherche"
-        >
-          <i class="bi bi-x-circle"></i>
-        </button>
-        <span class="search-count" *ngIf="!loading">
-          {{ filteredClients.length }} client{{ filteredClients.length > 1 ? 's' : '' }}
-          <span *ngIf="searchTerm.length > 0">trouvé(s)</span>
-        </span>
+        <input type="text" class="search-input" placeholder="Rechercher..." [(ngModel)]="searchTerm" (input)="filterClients()" (keyup.escape)="clearSearch()"/>
+        <button class="search-clear" *ngIf="searchTerm.length > 0" (click)="clearSearch()"><i class="bi bi-x-circle"></i></button>
+        <span class="search-count" *ngIf="!loading">{{ filteredClients.length }} client{{ filteredClients.length > 1 ? 's' : '' }}</span>
       </div>
     </div>
 
+    <!-- Tableau -->
     <div class="table-container">
       <table class="table">
         <thead>
@@ -52,91 +33,52 @@
           </tr>
         </thead>
         <tbody>
-          <!-- Affichage du chargement -->
           <tr *ngIf="loading">
-            <td colspan="6" class="loading">
-              <i class="bi bi-hourglass-split"></i> Chargement des clients...
-            </td>
+            <td colspan="6" class="loading"><i class="bi bi-hourglass-split"></i> Chargement...</td>
           </tr>
-          
-          <!-- Aucun client -->
           <tr *ngIf="!loading && clients.length === 0">
-            <td colspan="6" class="loading">
-              <i class="bi bi-inbox"></i> Aucun client
-            </td>
+            <td colspan="6" class="loading"><i class="bi bi-inbox"></i> Aucun client</td>
           </tr>
-          
-          <!-- Aucun résultat de recherche -->
           <tr *ngIf="!loading && clients.length > 0 && filteredClients.length === 0">
             <td colspan="6" class="loading">
-              <i class="bi bi-search"></i> Aucun client ne correspond à votre recherche
-              <br>
-              <button class="btn btn-sm btn-secondary" (click)="clearSearch()" style="margin-top: 10px;">
-                <i class="bi bi-x-circle"></i> Effacer la recherche
-              </button>
+              <i class="bi bi-search"></i> Aucun résultat
+              <button class="btn btn-sm btn-secondary" (click)="clearSearch()" style="margin-top:10px;"><i class="bi bi-x-circle"></i> Effacer</button>
             </td>
           </tr>
-          
-          <!-- Liste des clients filtrés -->
           <tr *ngFor="let client of filteredClients">
             <td>
               <strong>{{ client.societe }}</strong>
-              <div class="client-notes-preview" *ngIf="client.notes">
+              <div *ngIf="client.notes" class="client-notes-preview">
                 <small><i class="bi bi-chat-text"></i> {{ client.notes | slice:0:50 }}...</small>
               </div>
             </td>
             <td>{{ client.responsable }}</td>
             <td>{{ client.telephone }}</td>
             <td>
-              <!-- Badge de comportement -->
               <span class="badge" [class]="'badge-' + getComportementColor(client.comportement)" *ngIf="client.comportement">
-                <i [class]="getComportementIcon(client.comportement)"></i>
-                {{ client.comportement }}
+                <i [class]="getComportementIcon(client.comportement)"></i> {{ client.comportement }}
               </span>
-              <span class="badge badge-secondary" *ngIf="!client.comportement">
-                <i class="bi bi-question-circle"></i> Non évalué
-              </span>
-              <!-- Étoiles de notation -->
-              <div class="stars" *ngIf="client.note">
-                <span class="star" *ngFor="let s of [1,2,3,4,5]">
-                  <i [class]="s <= client.note ? 'bi-star-fill star-active' : 'bi-star star-inactive'"></i>
-                </span>
+              <span class="badge badge-secondary" *ngIf="!client.comportement"><i class="bi bi-question-circle"></i> Non évalué</span>
+              <div *ngIf="client.note" class="stars">
+                <span *ngFor="let s of [1,2,3,4,5]"><i [class]="s <= client.note ? 'bi-star-fill star-active' : 'bi-star star-inactive'"></i></span>
               </div>
-              <!-- Tags supplémentaires -->
               <div class="client-tags">
-                <span class="tag tag-info" *ngIf="client.negociateur">
-                  <i class="bi bi-calculator"></i> Négociateur
-                </span>
-                <span class="tag tag-success" *ngIf="client.clientFidele">
-                  <i class="bi bi-heart-fill"></i> Fidèle
-                </span>
+                <span class="tag tag-info" *ngIf="client.negociateur"><i class="bi bi-calculator"></i> Négociateur</span>
+                <span class="tag tag-success" *ngIf="client.clientFidele"><i class="bi bi-heart-fill"></i> Fidèle</span>
               </div>
             </td>
             <td>
-              <span class="badge" [class]="'badge-' + getPaiementColor(client.statutPaiement)" *ngIf="client.statutPaiement">
-                {{ getPaiementLabel(client.statutPaiement) }}
-              </span>
-              <span class="badge badge-secondary" *ngIf="!client.statutPaiement">
-                Non renseigné
-              </span>
-              <!-- Avertissements -->
-              <div class="warning-count" *ngIf="client.nombreAvertissements && client.nombreAvertissements > 0">
+              <span class="badge" [class]="'badge-' + getPaiementColor(client.statutPaiement)" *ngIf="client.statutPaiement">{{ getPaiementLabel(client.statutPaiement) }}</span>
+              <span class="badge badge-secondary" *ngIf="!client.statutPaiement">Non renseigné</span>
+              <div *ngIf="client.nombreAvertissements && client.nombreAvertissements > 0" class="warning-count">
                 <i class="bi bi-exclamation-triangle-fill"></i> {{ client.nombreAvertissements }} avertissement(s)
               </div>
             </td>
             <td>
-              <button class="btn btn-info btn-sm" (click)="viewClientDetails(client)" title="Voir détails">
-                <i class="bi bi-eye"></i>
-              </button>
-              <button class="btn btn-primary btn-sm" (click)="openNotesModal(client)" title="Évaluation">
-                <i class="bi bi-star"></i>
-              </button>
-              <button class="btn btn-warning btn-sm" (click)="editClient(client)" title="Modifier">
-                <i class="bi bi-pencil"></i>
-              </button>
-              <button class="btn btn-danger btn-sm" (click)="deleteClient(client.id!)" title="Supprimer">
-                <i class="bi bi-trash"></i>
-              </button>
+              <button class="btn btn-info btn-sm" (click)="viewClientDetails(client, 'info')" title="Détails"><i class="bi bi-eye"></i></button>
+              <button class="btn btn-primary btn-sm" (click)="openNotesModal(client)" title="Évaluation"><i class="bi bi-star"></i></button>
+              <button class="btn btn-warning btn-sm" (click)="editClient(client)" title="Modifier"><i class="bi bi-pencil"></i></button>
+              <button class="btn btn-danger btn-sm" (click)="deleteClient(client.id!)" title="Supprimer"><i class="bi bi-trash"></i></button>
             </td>
           </tr>
         </tbody>
@@ -144,7 +86,7 @@
     </div>
   </div>
 
-  <!-- Modal Formulaire Client -->
+  <!-- ==================== MODAL FORMULAIRE CLIENT ==================== -->
   <div class="modal" *ngIf="showForm">
     <div class="modal-content">
       <div class="modal-header">
@@ -152,27 +94,12 @@
         <button class="close" (click)="closeForm()">&times;</button>
       </div>
       <form [formGroup]="clientForm" (ngSubmit)="saveClient()">
-        <div class="form-group">
-          <label>Société *</label>
-          <input type="text" class="form-control" formControlName="societe">
-        </div>
-        <div class="form-group">
-          <label>Responsable *</label>
-          <input type="text" class="form-control" formControlName="responsable">
-        </div>
-        <div class="form-group">
-          <label>Téléphone</label>
-          <input type="tel" class="form-control" formControlName="telephone">
-        </div>
-        <div class="form-group">
-          <label>Adresse</label>
-          <input type="text" class="form-control" formControlName="adresse">
-        </div>
-        <div class="form-group">
-          <label>Email</label>
-          <input type="email" class="form-control" formControlName="email">
-        </div>
-        <div style="display: flex; gap: 10px; justify-content: flex-end;">
+        <div class="form-group"><label>Société *</label><input type="text" class="form-control" formControlName="societe"></div>
+        <div class="form-group"><label>Responsable *</label><input type="text" class="form-control" formControlName="responsable"></div>
+        <div class="form-group"><label>Téléphone</label><input type="tel" class="form-control" formControlName="telephone"></div>
+        <div class="form-group"><label>Adresse</label><input type="text" class="form-control" formControlName="adresse"></div>
+        <div class="form-group"><label>Email</label><input type="email" class="form-control" formControlName="email"></div>
+        <div style="display:flex; gap:10px; justify-content:flex-end;">
           <button type="button" class="btn btn-danger" (click)="closeForm()">Annuler</button>
           <button type="submit" class="btn btn-primary">Enregistrer</button>
         </div>
@@ -180,216 +107,235 @@
     </div>
   </div>
 
-  <!-- Modal Notes et Évaluation -->
+  <!-- ==================== MODAL NOTES ET ÉVALUATION ==================== -->
   <div class="modal" *ngIf="showNotesModal">
     <div class="modal-content modal-large">
       <div class="modal-header">
-        <h3>
-          <i class="bi bi-journal-bookmark-fill"></i>
-          Évaluation Client - {{ selectedClient?.societe }}
-        </h3>
+        <h3><i class="bi bi-journal-bookmark-fill"></i> Évaluation Client - {{ selectedClient?.societe }}</h3>
         <button class="close" (click)="closeNotesModal()">&times;</button>
       </div>
       <form [formGroup]="notesForm" (ngSubmit)="saveNotes()">
-        <!-- Comportement -->
         <div class="form-group">
           <label>Comportement</label>
           <select class="form-control" formControlName="comportement">
-            <option value="">Sélectionner un comportement</option>
+            <option value="">Sélectionner</option>
             <option *ngFor="let c of comportements" [value]="c.value">{{ c.label }}</option>
           </select>
         </div>
-        
-        <!-- Note en étoiles -->
         <div class="form-group">
-          <label>Note (1 à 5 étoiles)</label>
+          <label>Note (1-5)</label>
           <div class="rating-group">
-            <span *ngFor="let star of [1,2,3,4,5]" 
-                  (click)="notesForm.patchValue({note: star})"
-                  class="star-rating">
+            <span *ngFor="let star of [1,2,3,4,5]" (click)="notesForm.patchValue({note: star})" class="star-rating">
               <i [class]="star <= (notesForm.get('note')?.value || 0) ? 'bi-star-fill star-active' : 'bi-star star-inactive'"></i>
             </span>
           </div>
         </div>
-        
-        <!-- Statut Paiement -->
         <div class="form-group">
-          <label>Statut de paiement</label>
+          <label>Statut paiement</label>
           <select class="form-control" formControlName="statutPaiement">
-            <option value="">Sélectionner un statut</option>
+            <option value="">Sélectionner</option>
             <option *ngFor="let s of statutsPaiement" [value]="s.value">{{ s.label }}</option>
           </select>
         </div>
-        
-        <!-- Tags -->
         <div class="form-group">
           <label>Tags spéciaux</label>
           <div class="checkbox-group">
-            <label class="checkbox-label">
-              <input type="checkbox" formControlName="negociateur">
-              <i class="bi bi-calculator"></i> Négocie beaucoup
-            </label>
-            <label class="checkbox-label">
-              <input type="checkbox" formControlName="clientFidele">
-              <i class="bi bi-heart-fill"></i> Client fidèle
-            </label>
+            <label class="checkbox-label"><input type="checkbox" formControlName="negociateur"> <i class="bi bi-calculator"></i> Négocie beaucoup</label>
+            <label class="checkbox-label"><input type="checkbox" formControlName="clientFidele"> <i class="bi bi-heart-fill"></i> Client fidèle</label>
           </div>
         </div>
-        
-        <!-- Notes -->
         <div class="form-group">
           <label>Notes personnalisées</label>
-          <textarea class="form-control notes-textarea" formControlName="notes" 
-                    placeholder="📝 Exemples : Client impoli, négocie trop, paye en retard, toujours content, etc..."></textarea>
+          <textarea class="form-control notes-textarea" formControlName="notes" placeholder="📝 Notes..."></textarea>
         </div>
-        
-        <div style="display: flex; gap: 10px; justify-content: flex-end;">
+        <div style="display:flex; gap:10px; justify-content:flex-end;">
           <button type="button" class="btn btn-danger" (click)="closeNotesModal()">Annuler</button>
-          <button type="submit" class="btn btn-primary">
-            <i class="bi bi-save"></i> Enregistrer l'évaluation
-          </button>
+          <button type="submit" class="btn btn-primary"><i class="bi bi-save"></i> Enregistrer</button>
         </div>
       </form>
     </div>
-    
   </div>
-  
-</div>
-<!-- Modal Détails Client -->
-<div class="modal" *ngIf="showDetailsModal">
-  <div class="modal-content modal-large">
-    <div class="modal-header">
-      <h3>
-        <i class="bi bi-person-badge"></i>
-        Détails Client - {{ clientDetails?.societe }}
-      </h3>
-      <button class="close" (click)="closeDetailsModal()">&times;</button>
-    </div>
-    
-    <div *ngIf="detailsLoading" class="loading">
-      <i class="bi bi-hourglass-split"></i> Chargement des détails...
-    </div>
-    
-    <div *ngIf="!detailsLoading && clientDetails" class="details-container">
-      <!-- Informations générales -->
-      <div class="details-section">
-        <h4><i class="bi bi-building"></i> Informations générales</h4>
-        <div class="details-grid">
-          <div class="detail-item">
-            <label>Société :</label>
-            <span>{{ clientDetails.societe || '-' }}</span>
+
+  <!-- ==================== MODAL DÉTAILS CLIENT (AVEC ONGLETS) ==================== -->
+  <div class="modal" *ngIf="showDetailsModal">
+    <div class="modal-content modal-large">
+      <div class="modal-header">
+        <h3><i class="bi bi-person-badge"></i> Détails Client - {{ clientDetails?.societe }}</h3>
+        <button class="close" (click)="closeDetailsModal()">&times;</button>
+      </div>
+
+      <div *ngIf="detailsLoading" class="loading"><i class="bi bi-hourglass-split"></i> Chargement...</div>
+
+      <div *ngIf="!detailsLoading && clientDetails" class="details-container">
+        <!-- Onglets -->
+        <div class="tabs">
+          <button class="tab-btn" [class.active]="selectedTab === 'info'" (click)="selectedTab='info'">
+            <i class="bi bi-info-circle"></i> Informations
+          </button>
+          <button class="tab-btn" [class.active]="selectedTab === 'wallet'" (click)="selectedTab='wallet'; loadClientTransactions(clientDetails.id!)">
+            <i class="bi bi-wallet2"></i> Portefeuille
+          </button>
+        </div>
+
+        <!-- ===== ONGLET INFORMATIONS ===== -->
+        <div *ngIf="selectedTab === 'info'">
+          <div class="details-section">
+            <h4><i class="bi bi-building"></i> Informations générales</h4>
+            <div class="details-grid">
+              <div class="detail-item"><label>Société</label><span>{{ clientDetails.societe || '-' }}</span></div>
+              <div class="detail-item"><label>Responsable</label><span>{{ clientDetails.responsable || '-' }}</span></div>
+              <div class="detail-item"><label>Téléphone</label><span>{{ clientDetails.telephone || '-' }}</span></div>
+              <div class="detail-item"><label>Email</label><span>{{ clientDetails.email || '-' }}</span></div>
+              <div class="detail-item"><label>Adresse</label><span>{{ clientDetails.adresse || '-' }}</span></div>
+            </div>
           </div>
-          <div class="detail-item">
-            <label>Responsable :</label>
-            <span>{{ clientDetails.responsable || '-' }}</span>
+
+          <div class="details-section">
+            <h4><i class="bi bi-star-fill"></i> Évaluation</h4>
+            <div class="details-grid">
+              <div class="detail-item">
+                <label>Comportement</label>
+                <span>
+                  <span *ngIf="!clientDetails.comportement" class="badge badge-secondary"><i class="bi bi-question-circle"></i> Non évalué</span>
+                  <span *ngIf="clientDetails.comportement" class="badge" [class]="'badge-' + getComportementColor(clientDetails.comportement)">
+                    <i [class]="getComportementIcon(clientDetails.comportement)"></i> {{ clientDetails.comportement }}
+                  </span>
+                </span>
+              </div>
+              <div class="detail-item">
+                <label>Note</label>
+                <span>
+                  <span *ngIf="clientDetails.note" class="stars-detail">
+                    <i class="bi-star-fill star-active" *ngFor="let s of [1,2,3,4,5] let i = index" [class.star-active]="i < (clientDetails.note || 0)"></i>
+                    ({{ clientDetails.note }}/5)
+                  </span>
+                  <span *ngIf="!clientDetails.note">Non noté</span>
+                </span>
+              </div>
+              <div class="detail-item">
+                <label>Statut paiement</label>
+                <span>
+                  <span *ngIf="!clientDetails.statutPaiement" class="badge badge-secondary">Non renseigné</span>
+                  <span *ngIf="clientDetails.statutPaiement" class="badge" [class]="'badge-' + getPaiementColor(clientDetails.statutPaiement)">
+                    {{ getPaiementLabel(clientDetails.statutPaiement) }}
+                  </span>
+                </span>
+              </div>
+              <div class="detail-item">
+                <label>Tags</label>
+                <span>
+                  <span *ngIf="clientDetails.negociateur" class="tag tag-info"><i class="bi bi-calculator"></i> Négociateur</span>
+                  <span *ngIf="clientDetails.clientFidele" class="tag tag-success"><i class="bi bi-heart-fill"></i> Fidèle</span>
+                  <span *ngIf="!clientDetails.negociateur && !clientDetails.clientFidele">Aucun tag</span>
+                </span>
+              </div>
+              <div class="detail-item">
+                <label>Avertissements</label>
+                <span>
+                  <span *ngIf="clientDetails.nombreAvertissements && clientDetails.nombreAvertissements > 0" class="warning-count">
+                    <i class="bi bi-exclamation-triangle-fill"></i> {{ clientDetails.nombreAvertissements }} avertissement(s)
+                  </span>
+                  <span *ngIf="!clientDetails.nombreAvertissements || clientDetails.nombreAvertissements === 0">✅ Aucun avertissement</span>
+                </span>
+              </div>
+              <div class="detail-item">
+                <label>Dernier contact</label>
+                <span>{{ clientDetails.dernierContact ? (clientDetails.dernierContact | date:'dd/MM/yyyy HH:mm') : 'Non renseigné' }}</span>
+              </div>
+            </div>
           </div>
-          <div class="detail-item">
-            <label>Téléphone :</label>
-            <span>{{ clientDetails.telephone || '-' }}</span>
+
+          <div class="details-section">
+            <h4><i class="bi bi-chat-text"></i> Notes personnalisées</h4>
+            <div class="notes-box">
+              <p *ngIf="clientDetails.notes; else noNotes">{{ clientDetails.notes }}</p>
+              <ng-template #noNotes><p class="text-muted">Aucune note</p></ng-template>
+            </div>
           </div>
-          <div class="detail-item">
-            <label>Email :</label>
-            <span>{{ clientDetails.email || '-' }}</span>
-          </div>
-          <div class="detail-item">
-            <label>Adresse :</label>
-            <span>{{ clientDetails.adresse || '-' }}</span>
+
+          <div *ngIf="clientDetails.historiqueNotes" class="details-section">
+            <h4><i class="bi bi-clock-history"></i> Historique</h4>
+            <div class="history-box"><pre class="history-pre">{{ clientDetails.historiqueNotes }}</pre></div>
           </div>
         </div>
-      </div>
-      
-    <!-- Évaluation -->
-<div class="details-section">
-  <h4><i class="bi bi-star-fill"></i> Évaluation</h4>
-  <div class="details-grid">
-    <div class="detail-item">
-      <label>Comportement :</label>
-      <span>
-        <span class="badge badge-secondary" *ngIf="!clientDetails.comportement">
-          <i class="bi bi-question-circle"></i> Non évalué
-        </span>
-        <span class="badge" [class]="'badge-' + getComportementColor(clientDetails.comportement)" *ngIf="clientDetails.comportement">
-          <i [class]="getComportementIcon(clientDetails.comportement)"></i>
-          {{ clientDetails.comportement }}
-        </span>
-      </span>
-    </div>
-    <div class="detail-item">
-      <label>Note :</label>
-      <span>
-        <span *ngIf="clientDetails.note" class="stars-detail">
-          <i class="bi-star-fill star-active" *ngFor="let s of [1,2,3,4,5] let i = index" 
-             [class.star-active]="i < (clientDetails.note || 0)"></i>
-          <span> ({{ clientDetails.note }}/5)</span>
-        </span>
-        <span *ngIf="!clientDetails.note">Non noté</span>
-      </span>
-    </div>
-    <div class="detail-item">
-      <label>Statut paiement :</label>
-      <span>
-        <span class="badge badge-secondary" *ngIf="!clientDetails.statutPaiement">
-          Non renseigné
-        </span>
-        <span class="badge" [class]="'badge-' + getPaiementColor(clientDetails.statutPaiement)" *ngIf="clientDetails.statutPaiement">
-          {{ getPaiementLabel(clientDetails.statutPaiement) }}
-        </span>
-      </span>
-    </div>
-    <div class="detail-item">
-      <label>Tags :</label>
-      <span>
-        <span class="tag tag-info" *ngIf="clientDetails.negociateur">
-          <i class="bi bi-calculator"></i> Négociateur
-        </span>
-        <span class="tag tag-success" *ngIf="clientDetails.clientFidele">
-          <i class="bi bi-heart-fill"></i> Client fidèle
-        </span>
-        <span *ngIf="!clientDetails.negociateur && !clientDetails.clientFidele">Aucun tag</span>
-      </span>
-    </div>
-    <div class="detail-item">
-      <label>Avertissements :</label>
-      <span>
-        <span class="warning-count" *ngIf="clientDetails.nombreAvertissements && clientDetails.nombreAvertissements > 0">
-          <i class="bi bi-exclamation-triangle-fill"></i> {{ clientDetails.nombreAvertissements }} avertissement(s)
-        </span>
-        <span *ngIf="!clientDetails.nombreAvertissements || clientDetails.nombreAvertissements === 0">✅ Aucun avertissement</span>
-      </span>
-    </div>
-    <div class="detail-item">
-      <label>Dernier contact :</label>
-      <span>{{ clientDetails.dernierContact ? (clientDetails.dernierContact | date:'dd/MM/yyyy HH:mm') : 'Non renseigné' }}</span>
-    </div>
-  </div>
-</div>
-      
-      <!-- Notes personnalisées -->
-      <div class="details-section">
-        <h4><i class="bi bi-chat-text"></i> Notes personnalisées</h4>
-        <div class="notes-box">
-          <p *ngIf="clientDetails.notes; else noNotes">
-            {{ clientDetails.notes }}
-          </p>
-          <ng-template #noNotes>
-            <p class="text-muted">Aucune note enregistrée</p>
-          </ng-template>
+
+        <!-- ===== ONGLET PORTEFEUILLE ===== -->
+        <div *ngIf="selectedTab === 'wallet'">
+          <div class="wallet-summary">
+            <div class="wallet-stat">
+              <span class="label">Total payé</span>
+              <span class="value">{{ totalPaye | number:'1.2-2' }} DT</span>
+            </div>
+            <div class="wallet-stat">
+              <span class="label">Nombre de paiements</span>
+              <span class="value">{{ nombreTransactions }}</span>
+            </div>
+            <div class="wallet-stat">
+              <span class="label">Dernier paiement</span>
+              <span class="value">{{ getDerniereTransactionDate() }}</span>
+            </div>
+            <div class="wallet-stat">
+              <span class="label">Montant moyen</span>
+              <span class="value">{{ montantMoyen | number:'1.2-2' }} DT</span>
+            </div>
+          </div>
+
+          <div *ngIf="walletLoading" class="loading">
+            <i class="bi bi-hourglass-split"></i> Chargement...
+          </div>
+
+          <div *ngIf="!walletLoading && transactions.length === 0" class="no-data">
+            <i class="bi bi-inbox"></i> Aucune transaction
+          </div>
+
+          <div *ngIf="!walletLoading && transactions.length > 0" class="table-container">
+            <table class="table table-sm">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Intervention</th>
+                  <th>Montant</th>
+                  <th>Réduction</th>
+                  <th>Net payé</th>
+                  <th>Méthode</th>
+                  <th>Statut</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let tx of transactions">
+                  <td>{{ tx.dateTransaction | date:'dd/MM/yyyy HH:mm' }}</td>
+                  <td>#{{ tx.interventionId || '-' }}</td>
+                  <td>{{ tx.montant }} DT</td>
+                  <td>
+                    <span *ngIf="tx.remise || tx.remisePourcentage">
+                      {{ tx.remise ? tx.remise + ' DT' : '' }}
+                      {{ tx.remisePourcentage ? tx.remisePourcentage + '%' : '' }}
+                      <span *ngIf="tx.promoCode">({{ tx.promoCode }})</span>
+                    </span>
+                    <span *ngIf="!tx.remise && !tx.remisePourcentage">-</span>
+                  </td>
+                  <td><strong>{{ tx.montant - (tx.remise || 0) }} DT</strong></td>
+                  <td>{{ tx.methode }}</td>
+                  <td>
+                    <span class="badge" 
+                          [class.badge-success]="tx.statut === 'VALIDE'" 
+                          [class.badge-warning]="tx.statut === 'EN_ATTENTE'" 
+                          [class.badge-danger]="tx.statut === 'ANNULE'">
+                      {{ tx.statut === 'VALIDE' ? '✅ Validé' : tx.statut === 'EN_ATTENTE' ? '⏳ En attente' : '❌ Annulé' }}
+                    </span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
-      
-      <!-- Historique -->
-      <div class="details-section" *ngIf="clientDetails.historiqueNotes">
-        <h4><i class="bi bi-clock-history"></i> Historique des actions</h4>
-        <div class="history-box">
-          <pre class="history-pre">{{ clientDetails.historiqueNotes }}</pre>
+
+        <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:20px;">
+          <button class="btn btn-secondary" (click)="closeDetailsModal()">Fermer</button>
+          <button class="btn btn-primary" (click)="editClient(clientDetails); closeDetailsModal()">
+            <i class="bi bi-pencil"></i> Modifier
+          </button>
         </div>
-      </div>
-      
-      <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
-        <button type="button" class="btn btn-secondary" (click)="closeDetailsModal()">Fermer</button>
-        <button type="button" class="btn btn-primary" (click)="editClient(clientDetails); closeDetailsModal()">
-          <i class="bi bi-pencil"></i> Modifier
-        </button>
       </div>
     </div>
   </div>

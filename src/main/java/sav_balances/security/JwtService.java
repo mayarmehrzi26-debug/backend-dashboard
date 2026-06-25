@@ -27,6 +27,17 @@ public class JwtService {
         return extractClaim(token, Claims::getSubject);
     }
     
+    public String extractRole(String token) {
+        try {
+            String role = extractClaim(token, claims -> claims.get("role", String.class));
+            System.out.println("📌 Rôle extrait du token: " + role);
+            return role;
+        } catch (Exception e) {
+            System.out.println("❌ Erreur extraction rôle: " + e.getMessage());
+            return "ROLE_USER";
+        }
+    }
+    
     public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
         final Claims claims = extractAllClaims(token);
         return claimsResolver.apply(claims);
@@ -42,8 +53,9 @@ public class JwtService {
     
     public String generateToken(String username, String role, String fullName) {
         Map<String, Object> claims = new HashMap<>();
-        claims.put("role", role);
+        claims.put("role", "ROLE_" + role);
         claims.put("fullName", fullName);
+        System.out.println("🔑 Génération token pour: " + username + " avec rôle: ROLE_" + role);
         return createToken(claims, username);
     }
     
@@ -59,7 +71,9 @@ public class JwtService {
     
     public boolean isTokenValid(String token, String username) {
         final String extractedUsername = extractUsername(token);
-        return (extractedUsername.equals(username)) && !isTokenExpired(token);
+        boolean isValid = extractedUsername.equals(username) && !isTokenExpired(token);
+        System.out.println("🔍 Token valide: " + isValid);
+        return isValid;
     }
     
     private boolean isTokenExpired(String token) {

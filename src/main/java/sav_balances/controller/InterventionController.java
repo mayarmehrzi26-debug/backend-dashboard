@@ -103,4 +103,8 @@ public class InterventionController {
     public List<Intervention> getByType(@PathVariable String type) {
         return service.getByType(type);
     }
+    @PostMapping("/{id}/refresh")
+    public Intervention refreshIntervention(@PathVariable Long id) {
+        return service.refreshMontants(id);
+    }
 }

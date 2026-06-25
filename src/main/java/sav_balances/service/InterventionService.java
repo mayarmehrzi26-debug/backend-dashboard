@@ -27,9 +27,12 @@ public class InterventionService {
         if (i.getDateReclamation() == null) {
             i.setDateReclamation(java.time.LocalDateTime.now());
         }
-        if (i.getDateOrdre() == null) {
-            i.setDateOrdre(java.time.LocalDateTime.now());
-        }
+        // ========== CORRECTION : NE PAS FORCER dateOrdre ==========
+        // On laisse la date d'intervention vide si elle n'est pas fournie
+        // if (i.getDateOrdre() == null) {
+        //     i.setDateOrdre(java.time.LocalDateTime.now());
+        // }
+        
         if (i.getType() == null || i.getType().isEmpty()) {
             i.setType("INTERNE");
         }
@@ -74,9 +77,11 @@ public class InterventionService {
         if (i.getDateReclamation() == null) {
             i.setDateReclamation(java.time.LocalDateTime.now());
         }
-        if (i.getDateOrdre() == null) {
-            i.setDateOrdre(java.time.LocalDateTime.now());
-        }
+        // ========== CORRECTION : NE PAS FORCER dateOrdre ==========
+        // if (i.getDateOrdre() == null) {
+        //     i.setDateOrdre(java.time.LocalDateTime.now());
+        // }
+        
         if (i.getReference() == null) {
             i.setReference("");
         }

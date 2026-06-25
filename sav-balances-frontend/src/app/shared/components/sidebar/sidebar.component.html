@@ -1,3 +1,4 @@
+<!-- src/app/shared/components/sidebar/sidebar.component.html -->
 <aside class="sidebar" [class.collapsed]="isCollapsed">
   <div class="sidebar-header">
     <div class="header-content" *ngIf="!isCollapsed">
@@ -13,8 +14,7 @@
   </div>
   
   <nav class="sidebar-nav">
-    <!-- Reste du code identique -->
-    <ng-container *ngFor="let item of menuItems">
+    <ng-container *ngFor="let item of getVisibleMenuItems()">
       <ng-container *ngIf="!item.submenu">
         <a [routerLink]="item.path" 
            routerLinkActive="active"

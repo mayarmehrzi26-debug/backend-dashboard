@@ -1,3 +1,4 @@
+<!-- src/app/modules/login/login.component.html -->
 <div class="login-container">
   <div class="login-card">
     <div class="login-header">
@@ -15,7 +16,7 @@
                  class="form-control" 
                  [(ngModel)]="username" 
                  name="username"
-                 placeholder="Entrez votre nom d'utilisateur"
+                 placeholder="admin ou user"
                  [disabled]="loading"
                  autocomplete="username"
                  required>
@@ -30,7 +31,7 @@
                  class="form-control" 
                  [(ngModel)]="password" 
                  name="password"
-                 placeholder="Entrez votre mot de passe"
+                 placeholder="admin123 ou user123"
                  [disabled]="loading"
                  autocomplete="current-password"
                  required>
@@ -47,10 +48,10 @@
           <input type="checkbox" [(ngModel)]="rememberMe" name="rememberMe">
           <span>Se souvenir de moi</span>
         </label>
-        <a href="#" class="forgot-password">Mot de passe oublié ?</a>
       </div>
       
-      <div *ngIf="errorMessage" class="error-message">
+      <!-- Message d'erreur avec animation -->
+      <div *ngIf="errorMessage" class="error-message" [class.show]="errorMessage">
         <i class="bi bi-exclamation-triangle"></i>
         {{ errorMessage }}
       </div>
@@ -63,6 +64,10 @@
     
     <div class="login-footer">
       <small>© 2024 SAV Balances - Version 1.0</small>
+      <br>
+      <small style="color: #6c757d; font-size: 0.7rem;">
+        admin/admin123 | user/user123
+      </small>
     </div>
   </div>
 </div>

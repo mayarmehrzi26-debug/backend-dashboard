@@ -1049,3 +1049,80 @@ select.form-control {
   overflow: visible !important;
 }
 
+.alert-info {
+  background-color: #d1ecf1;
+  border-color: #bee5eb;
+  color: #0c5460;
+  padding: 0.75rem 1.25rem;
+  border-radius: 0.25rem;
+}
+
+.alert-warning {
+  background-color: #fff3cd;
+  border-color: #ffeeba;
+  color: #856404;
+  padding: 0.75rem 1.25rem;
+  border-radius: 0.25rem;
+}
+
+.badge-warning {
+  background-color: #ffc107;
+  color: #212529;
+}
+
+.btn-group-vertical {
+  display: inline-flex;
+  flex-direction: column;
+  vertical-align: middle;
+}
+
+.text-warning {
+  color: #856404 !important;
+}
+
+.text-success {
+  color: #28a745 !important;
+}
+
+.text-danger {
+  color: #dc3545 !important;
+}
+
+/* Styles pour les informations manquantes */
+.detail-item .badge {
+  font-size: 0.7rem;
+  padding: 0.25rem 0.5rem;
+}
+
+/* Amélioration du design des alertes */
+.alert {
+  border-radius: 0.25rem;
+}
+
+.alert-info i, .alert-warning i {
+  margin-right: 5px;
+}
+
+/* Style pour le bouton PDF */
+.btn-danger {
+  background-color: #dc3545;
+  border-color: #dc3545;
+  color: #fff;
+}
+
+.btn-danger:hover {
+  background-color: #c82333;
+  border-color: #bd2130;
+}
+
+/* Responsive pour les petits écrans */
+@media (max-width: 768px) {
+  .btn-group-vertical .btn-group {
+    flex-wrap: wrap;
+  }
+  
+  .btn-group-vertical .btn-group .btn-sm {
+    font-size: 0.7rem;
+    padding: 0.2rem 0.4rem;
+  }
+}

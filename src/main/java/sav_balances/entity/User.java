@@ -23,11 +23,19 @@ public class User {
     
     private String fullName;
     
+    @Column(name = "telephone")
+    private String telephone; // ← NOUVEAU
+    
     private Boolean enabled = true;
     
     private LocalDateTime lastLogin;
     
     private LocalDateTime createdAt;
+    
+    // Rôles possibles
+    public static final String ROLE_ADMIN = "ADMIN";
+    public static final String ROLE_TECHNICIEN = "TECHNICIEN";
+    public static final String ROLE_USER = "USER";
     
     // Constructeurs
     public User() {}
@@ -61,6 +69,9 @@ public class User {
     public String getFullName() { return fullName; }
     public void setFullName(String fullName) { this.fullName = fullName; }
     
+    public String getTelephone() { return telephone; } // ← NOUVEAU
+    public void setTelephone(String telephone) { this.telephone = telephone; } // ← NOUVEAU
+    
     public Boolean getEnabled() { return enabled; }
     public void setEnabled(Boolean enabled) { this.enabled = enabled; }
     
@@ -69,4 +80,12 @@ public class User {
     
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    
+    public boolean isTechnicien() {
+        return ROLE_TECHNICIEN.equals(this.role);
+    }
+    
+    public boolean isAdmin() {
+        return ROLE_ADMIN.equals(this.role);
+    }
 }

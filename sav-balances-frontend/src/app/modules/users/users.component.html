@@ -1,0 +1,223 @@
+<!-- src/app/modules/users/users.component.html -->
+<div class="users-container">
+  <div class="card">
+    <!-- En-tête -->
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
+      <h3 class="card-title">
+        <i class="bi bi-people-fill"></i> Gestion des utilisateurs
+        <small style="display: block; font-size: 0.8rem; color: #6c757d; font-weight: normal;">
+          {{ filteredUsers.length }} utilisateur{{ filteredUsers.length > 1 ? 's' : '' }}
+          <span *ngIf="users.filter(u => u.role === 'TECHNICIEN').length > 0">
+            • 🔧 {{ users.filter(u => u.role === 'TECHNICIEN').length }} technicien(s)
+          </span>
+        </small>
+      </h3>
+      <button class="btn btn-primary" (click)="openForm()">
+        <i class="bi bi-plus-circle"></i> Nouvel utilisateur
+      </button>
+    </div>
+
+    <!-- Barre de recherche et filtres -->
+    <div class="search-container">
+      <div class="search-box">
+        <i class="bi bi-search search-icon"></i>
+        <input 
+          type="text" 
+          class="search-input" 
+          placeholder="Rechercher un utilisateur (nom, email, rôle...)"
+          [(ngModel)]="searchTerm"
+          (input)="filterUsers()"
+          (keyup.escape)="clearSearch()"
+        />
+        <button class="search-clear" *ngIf="searchTerm.length > 0" (click)="clearSearch()">
+          <i class="bi bi-x-circle"></i>
+        </button>
+        <span class="search-count" *ngIf="!loading">
+          {{ filteredUsers.length }} utilisateur{{ filteredUsers.length > 1 ? 's' : '' }}
+        </span>
+      </div>
+    </div>
+
+    <!-- Légende des rôles -->
+    <div class="legend-roles">
+      <span class="legend-item">
+        <span class="badge badge-danger">👑 ADMIN</span> Accès total
+      </span>
+      <span class="legend-item">
+        <span class="badge badge-primary">🔧 TECHNICIEN</span> Interventions assignées
+      </span>
+      <span class="legend-item">
+        <span class="badge badge-info">👤 USER</span> Consultation uniquement
+      </span>
+    </div>
+
+    <!-- Tableau -->
+    <div class="table-container">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Nom d'utilisateur</th>
+            <th>Nom complet</th>
+            <th>Email</th>
+            <th>Rôle</th>
+            <th>Statut</th>
+            <th>Dernière connexion</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngIf="loading">
+            <td colspan="7" class="loading">
+              <i class="bi bi-hourglass-split"></i> Chargement...
+            </td>
+          </tr>
+          <tr *ngIf="!loading && users.length === 0">
+            <td colspan="7" class="loading">
+              <i class="bi bi-inbox"></i> Aucun utilisateur
+            </td>
+          </tr>
+          <tr *ngIf="!loading && users.length > 0 && filteredUsers.length === 0">
+            <td colspan="7" class="loading">
+              <i class="bi bi-search"></i> Aucune correspondance
+              <br>
+              <button class="btn btn-sm btn-secondary" (click)="clearSearch()" style="margin-top: 10px;">
+                <i class="bi bi-x-circle"></i> Effacer la recherche
+              </button>
+            </td>
+          </tr>
+          <tr *ngFor="let user of filteredUsers">
+            <td><strong>{{ user.username }}</strong></td>
+            <td>{{ user.fullName }}</td>
+            <td>{{ user.email }}</td>
+            <td>
+              <span class="badge" [class]="getRoleClass(user.role)">
+                {{ getRoleLabel(user.role) }}
+              </span>
+            </td>
+            <td>
+              <span class="badge" [class]="getStatusClass(user.enabled)">
+                {{ getStatusLabel(user.enabled) }}
+              </span>
+            </td>
+            <td>{{ formatDate(user.lastLogin) }}</td>
+            <td>
+              <div class="btn-group" style="gap: 3px;">
+                <button class="btn btn-warning btn-sm" (click)="editUser(user)" title="Modifier">
+                  <i class="bi bi-pencil"></i>
+                </button>
+                <button *ngIf="user.username !== 'admin'" 
+                        class="btn btn-sm" 
+                        [class.btn-success]="!user.enabled"
+                        [class.btn-secondary]="user.enabled"
+                        (click)="toggleEnabled(user)"
+                        [title]="user.enabled ? 'Désactiver' : 'Activer'">
+                  <i [class.bi-check-circle]="!user.enabled" [class.bi-x-circle]="user.enabled"></i>
+                </button>
+                <button *ngIf="user.username !== 'admin'" 
+                        class="btn btn-danger btn-sm" 
+                        (click)="openDeleteModal(user.id!)"
+                        title="Supprimer">
+                  <i class="bi bi-trash"></i>
+                </button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- MODAL FORMULAIRE -->
+  <div class="modal" *ngIf="showForm">
+    <div class="modal-content modal-medium">
+      <div class="modal-header">
+        <h3>
+          <i class="bi" [class.bi-pencil]="isEditing" [class.bi-person-plus]="!isEditing"></i>
+          {{ isEditing ? 'Modifier l\'utilisateur' : 'Nouvel utilisateur' }}
+        </h3>
+        <button class="close" (click)="closeForm()">&times;</button>
+      </div>
+      <form [formGroup]="userForm" (ngSubmit)="saveUser()">
+        <div class="form-group">
+          <label>Nom d'utilisateur *</label>
+          <input type="text" class="form-control" formControlName="username" placeholder="Ex: john.doe">
+          <small class="text-muted">Minimum 3 caractères</small>
+        </div>
+
+        <div class="form-group">
+          <label>Mot de passe {{ isEditing ? '(laisser vide pour ne pas modifier)' : '*' }}</label>
+          <input type="password" class="form-control" formControlName="password" 
+                 placeholder="{{ isEditing ? 'Nouveau mot de passe...' : 'Minimum 6 caractères' }}">
+          <small class="text-muted" *ngIf="!isEditing">Minimum 6 caractères</small>
+        </div>
+
+        <div class="form-group">
+          <label>Email *</label>
+          <input type="email" class="form-control" formControlName="email" placeholder="Ex: john@exemple.com">
+        </div>
+<div class="form-group">
+  <label>Téléphone</label>
+  <input type="tel" class="form-control" formControlName="telephone" 
+         placeholder="Ex: +216 99 999 999">
+  <small class="text-muted">Numéro pour les notifications (SMS/WhatsApp)</small>
+</div>
+        <div class="form-group">
+          <label>Nom complet *</label>
+          <input type="text" class="form-control" formControlName="fullName" placeholder="Ex: John Doe">
+        </div>
+
+        <div class="form-group">
+          <label>Rôle *</label>
+          <select class="form-control" formControlName="role">
+            <option *ngFor="let role of roles" [value]="role.value">
+              {{ role.label }}
+            </option>
+          </select>
+          <small class="text-muted">
+            <span *ngIf="userForm.get('role')?.value === 'ADMIN'">👑 Accès complet à toutes les fonctionnalités</span>
+            <span *ngIf="userForm.get('role')?.value === 'TECHNICIEN'">🔧 Accès uniquement aux interventions assignées</span>
+            <span *ngIf="userForm.get('role')?.value === 'USER'">👤 Consultation et téléchargement PDF uniquement</span>
+          </small>
+        </div>
+
+        <div class="form-group" *ngIf="isEditing">
+          <label class="checkbox-label">
+            <input type="checkbox" formControlName="enabled">
+            <span>Compte actif</span>
+          </label>
+        </div>
+
+        <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+          <button type="button" class="btn btn-secondary" (click)="closeForm()">Annuler</button>
+          <button type="submit" class="btn btn-primary" [disabled]="userForm.invalid">
+            <i class="bi" [class.bi-pencil]="isEditing" [class.bi-save]="!isEditing"></i>
+            {{ isEditing ? 'Mettre à jour' : 'Créer' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL CONFIRMATION SUPPRESSION -->
+  <div class="modal" *ngIf="showDeleteModal">
+    <div class="modal-content modal-small">
+      <div class="modal-header">
+        <h3 style="color: #dc3545;">
+          <i class="bi bi-trash-fill"></i> Confirmer la suppression
+        </h3>
+        <button class="close" (click)="closeDeleteModal()">&times;</button>
+      </div>
+      <div style="padding: 20px; text-align: center;">
+        <i class="bi bi-exclamation-triangle-fill" style="font-size: 3rem; color: #dc3545;"></i>
+        <p style="margin-top: 15px; font-size: 1.1rem;">Êtes-vous sûr de vouloir supprimer cet utilisateur ?</p>
+        <p style="color: #6c757d; font-size: 0.9rem;">Cette action est irréversible.</p>
+      </div>
+      <div style="display: flex; gap: 10px; justify-content: center; padding: 15px;">
+        <button class="btn btn-secondary" (click)="closeDeleteModal()">Annuler</button>
+        <button class="btn btn-danger" (click)="confirmDelete()">
+          <i class="bi bi-trash"></i> Supprimer
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

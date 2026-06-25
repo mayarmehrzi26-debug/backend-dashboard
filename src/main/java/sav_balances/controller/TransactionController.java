@@ -1,3 +1,4 @@
+// sav_balances/controller/TransactionController.java
 package sav_balances.controller;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,7 +25,7 @@ public class TransactionController {
             @RequestBody Transaction transaction) {
         try {
             Transaction saved = transactionService.ajouterPaiement(interventionId, transaction);
-            return ResponseEntity.ok(new TransactionDTO(saved));  // ← UTILISER LE DTO
+            return ResponseEntity.ok(new TransactionDTO(saved));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
@@ -34,6 +35,19 @@ public class TransactionController {
     public ResponseEntity<?> getTransactionsByIntervention(@PathVariable Long interventionId) {
         try {
             List<Transaction> transactions = transactionService.getTransactionsByIntervention(interventionId);
+            List<TransactionDTO> dtos = transactions.stream()
+                    .map(TransactionDTO::new)
+                    .collect(Collectors.toList());
+            return ResponseEntity.ok(dtos);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    @GetMapping("/client/{societe}")
+    public ResponseEntity<?> getTransactionsByClient(@PathVariable String societe) {
+        try {
+            List<Transaction> transactions = transactionService.getByClientSociete(societe);
             List<TransactionDTO> dtos = transactions.stream()
                     .map(TransactionDTO::new)
                     .collect(Collectors.toList());

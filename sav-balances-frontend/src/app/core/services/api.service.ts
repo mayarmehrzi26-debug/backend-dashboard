@@ -42,14 +42,10 @@ export interface Intervention {
   prixReel?: number;
   prestationId?: number;
   type?: string;
-  
-  // ========== CHAMPS PROCESSUS INTERNE ==========
-  statutIntervention?: 'EN_ATTENTE' | 'CONFIRME' | 'ANNULE' | 'TERMINE';  // ← INCLURE CONFIRME
+  statutIntervention?: 'EN_ATTENTE' | 'CONFIRME' | 'ANNULE' | 'TERMINE';
   prixPropose?: number;
   dateDiagnostic?: string;
   dateRecuperation?: string;
-  
-  // Champs paiement
   montantTotal?: number;
   montantPaye?: number;
   montantRestant?: number;
@@ -64,6 +60,21 @@ export interface Balance {
   dateCreation: string;
   description: string;
   notes?: string;
+}
+
+export interface TransactionClient {
+  id?: number;
+  clientId?: number;
+  interventionId?: number;
+  montant: number;
+  dateTransaction: string;
+  methode: 'ESPECES' | 'CHEQUE' | 'VIREMENT' | 'CARTE';
+  reference?: string;
+  notes?: string;
+  statut: 'EN_ATTENTE' | 'VALIDE' | 'ANNULE';
+  remise?: number;
+  remisePourcentage?: number;
+  promoCode?: string;
 }
 
 @Injectable({
@@ -95,6 +106,10 @@ export class ApiService {
     return this.http.delete<void>(`${this.apiUrl}/clients/${id}`);
   }
 
+  patchClient(id: number, client: Partial<Client>): Observable<Client> {
+    return this.http.patch<Client>(`${this.apiUrl}/clients/${id}`, client);
+  }
+
   // Interventions
   getInterventions(): Observable<Intervention[]> {
     return this.http.get<Intervention[]>(`${this.apiUrl}/interventions`);
@@ -114,6 +129,10 @@ export class ApiService {
 
   deleteIntervention(id: number): Observable<void> {
     return this.http.delete<void>(`${this.apiUrl}/interventions/${id}`);
+  }
+
+  getInterventionsByType(type: string): Observable<Intervention[]> {
+    return this.http.get<Intervention[]>(`${this.apiUrl}/interventions/type/${type}`);
   }
 
   // Balances
@@ -142,28 +161,17 @@ export class ApiService {
     return this.http.get(`${this.apiUrl}/stats/client/${clientId}`);
   }
 
-  patchClient(id: number, client: Partial<Client>): Observable<Client> {
-    return this.http.patch<Client>(`${this.apiUrl}/clients/${id}`, client);
-  }
-
+  // Export PDF
   exportFormulairePdf(id: number): Observable<Blob> {
-    return this.http.get(`${this.apiUrl}/export/formulaire/${id}/pdf`, {
-      responseType: 'blob'
-    });
-  }
-
-  searchClients(keyword: string): Observable<Client[]> {
-    return this.http.get<Client[]>(`${this.apiUrl}/clients/search?keyword=${keyword}`);
-  }
-
-  getInterventionsByType(type: string): Observable<Intervention[]> {
-    return this.http.get<Intervention[]>(`${this.apiUrl}/interventions/type/${type}`);
+    return this.http.get(`${this.apiUrl}/export/formulaire/${id}/pdf`, { responseType: 'blob' });
   }
 
   exportFormulaireInternePdf(id: number): Observable<Blob> {
-    return this.http.get(`${this.apiUrl}/export/interne/${id}/pdf`, {
-      responseType: 'blob'
-    });
+    return this.http.get(`${this.apiUrl}/export/interne/${id}/pdf`, { responseType: 'blob' });
+  }
+
+  exportBonRecuperationPdf(id: number): Observable<Blob> {
+    return this.http.get(`${this.apiUrl}/export/interne/${id}/recuperation`, { responseType: 'blob' });
   }
 
   // Transactions
@@ -178,10 +186,19 @@ export class ApiService {
   annulerTransaction(transactionId: number): Observable<void> {
     return this.http.delete<void>(`${this.apiUrl}/transactions/${transactionId}`);
   }
-exportBonRecuperationPdf(id: number): Observable<Blob> {
-  return this.http.get(`${this.apiUrl}/export/interne/${id}/recuperation`, {
-    responseType: 'blob'
-  });
-}
 
+  // Wallet client
+  getTransactionsByClientSociete(societe: string): Observable<TransactionClient[]> {
+    return this.http.get<TransactionClient[]>(
+      `${this.apiUrl}/transactions/client/${encodeURIComponent(societe)}`
+    );
+  }
+
+  // Autres
+  searchClients(keyword: string): Observable<Client[]> {
+    return this.http.get<Client[]>(`${this.apiUrl}/clients/search?keyword=${keyword}`);
+  }
+  refreshIntervention(id: number): Observable<Intervention> {
+    return this.http.post<Intervention>(`${this.apiUrl}/interventions/${id}/refresh`, {});
+}
 }
