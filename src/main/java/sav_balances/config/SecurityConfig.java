@@ -31,31 +31,39 @@ public class SecurityConfig {
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
-                // Endpoints publics
+                // ===== ENDPOINTS PUBLICS =====
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers("/api/export/**").permitAll()
                 
                 // ===== ADMIN UNIQUEMENT =====
                 // Gestion des utilisateurs
-                .requestMatchers("/api/users/**").hasAuthority("ROLE_ADMIN")
+                .requestMatchers(HttpMethod.POST, "/api/users").hasAuthority("ROLE_ADMIN")
+                .requestMatchers(HttpMethod.PUT, "/api/users/**").hasAuthority("ROLE_ADMIN")
+                .requestMatchers(HttpMethod.DELETE, "/api/users/**").hasAuthority("ROLE_ADMIN")
                 
-                // Écriture
-                .requestMatchers(HttpMethod.POST, "/api/interventions").hasAuthority("ROLE_ADMIN")
-                .requestMatchers(HttpMethod.PUT, "/api/interventions/**").hasAuthority("ROLE_ADMIN")
+                // DELETE sur les interventions
                 .requestMatchers(HttpMethod.DELETE, "/api/interventions/**").hasAuthority("ROLE_ADMIN")
+                .requestMatchers(HttpMethod.PUT, "/api/interventions/**").hasAuthority("ROLE_ADMIN")
+                
+                // Clients (POST, PUT, DELETE)
                 .requestMatchers(HttpMethod.POST, "/api/clients").hasAuthority("ROLE_ADMIN")
                 .requestMatchers(HttpMethod.PUT, "/api/clients/**").hasAuthority("ROLE_ADMIN")
                 .requestMatchers(HttpMethod.DELETE, "/api/clients/**").hasAuthority("ROLE_ADMIN")
+                
+                // Balances
                 .requestMatchers(HttpMethod.POST, "/api/balances").hasAuthority("ROLE_ADMIN")
                 .requestMatchers(HttpMethod.PUT, "/api/balances/**").hasAuthority("ROLE_ADMIN")
                 .requestMatchers(HttpMethod.DELETE, "/api/balances/**").hasAuthority("ROLE_ADMIN")
+                
+                // Prestations
                 .requestMatchers(HttpMethod.POST, "/api/prestations").hasAuthority("ROLE_ADMIN")
                 .requestMatchers(HttpMethod.PUT, "/api/prestations/**").hasAuthority("ROLE_ADMIN")
                 .requestMatchers(HttpMethod.DELETE, "/api/prestations/**").hasAuthority("ROLE_ADMIN")
-                .requestMatchers("/api/transactions/**").hasAuthority("ROLE_ADMIN")
-                .requestMatchers("/api/stats/**").hasAuthority("ROLE_ADMIN")
                 
-                // ===== AUTHENTIFIÉS UNIQUEMENT (lecture pour tous) =====
+                // Stats
+                .requestMatchers("/api/stats/**").hasAuthority("ROLE_ADMIN")
+
+                // ===== LECTURE POUR TOUS (authentifiés) =====
                 .requestMatchers(HttpMethod.GET, "/api/interventions").authenticated()
                 .requestMatchers(HttpMethod.GET, "/api/interventions/**").authenticated()
                 .requestMatchers(HttpMethod.GET, "/api/interventions/type/**").authenticated()
@@ -65,6 +73,22 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/balances/**").authenticated()
                 .requestMatchers(HttpMethod.GET, "/api/prestations").authenticated()
                 .requestMatchers(HttpMethod.GET, "/api/prestations/**").authenticated()
+                .requestMatchers(HttpMethod.GET, "/api/users/techniciens").authenticated()
+                .requestMatchers(HttpMethod.GET, "/api/users/techniciens/**").authenticated()
+                
+                // ===== CRÉATION POUR USER + ADMIN =====
+                // ✅ TOUT LE MONDE peut créer une intervention (interne et externe)
+                .requestMatchers(HttpMethod.POST, "/api/interventions").authenticated()
+                
+                // ===== TRANSACTIONS - POUR TOUS =====
+                .requestMatchers(HttpMethod.POST, "/api/transactions/intervention/{id}/date").authenticated()
+                .requestMatchers(HttpMethod.POST, "/api/transactions/intervention/{id}").authenticated()
+                .requestMatchers(HttpMethod.GET, "/api/transactions/intervention/{id}").authenticated()
+                .requestMatchers(HttpMethod.GET, "/api/transactions/client/**").authenticated()
+                .requestMatchers(HttpMethod.DELETE, "/api/transactions/**").hasAuthority("ROLE_ADMIN")
+                
+                // ===== INTERVENTIONS CLIENT =====
+                .requestMatchers(HttpMethod.GET, "/api/interventions/client/**").authenticated()
                 
                 .anyRequest().authenticated()
             )

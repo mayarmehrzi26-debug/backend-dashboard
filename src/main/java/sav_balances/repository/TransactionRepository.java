@@ -10,11 +10,14 @@ import java.util.List;
 
 public interface TransactionRepository extends JpaRepository<Transaction, Long> {
 
-    // Récupérer toutes les transactions d'une intervention
-    List<Transaction> findByInterventionId(Long interventionId);
+    // ✅ CORRIGÉ : requête explicite au lieu du nom dérivé
+    // (évite le conflit avec le getter getInterventionId() de l'entité)
+    @Query("SELECT t FROM Transaction t WHERE t.intervention.id = :interventionId")
+    List<Transaction> findByInterventionId(@Param("interventionId") Long interventionId);
 
-    // Récupérer les transactions d'une intervention triées par date décroissante
-    List<Transaction> findByInterventionIdOrderByDateTransactionDesc(Long interventionId);
+    // ✅ CORRIGÉ : requête explicite au lieu du nom dérivé
+    @Query("SELECT t FROM Transaction t WHERE t.intervention.id = :interventionId ORDER BY t.dateTransaction DESC")
+    List<Transaction> findByInterventionIdOrderByDateTransactionDesc(@Param("interventionId") Long interventionId);
 
     // Récupérer les transactions par statut
     List<Transaction> findByStatut(String statut);

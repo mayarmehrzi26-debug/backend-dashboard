@@ -1,4 +1,3 @@
-// sav_balances/entity/Transaction.java
 package sav_balances.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -34,8 +33,9 @@ public class Transaction {
     private Double remisePourcentage;
     private String promoCode;
 
+    // ✅ CORRECTION : Ajout de AUTOMATIQUE dans l'énumération
     public enum MethodePaiement {
-        ESPECES, CHEQUE, VIREMENT, CARTE
+        ESPECES, CHEQUE, VIREMENT, CARTE, AUTOMATIQUE
     }
 
     public enum StatutTransaction {
@@ -49,7 +49,14 @@ public class Transaction {
         this.remisePourcentage = 0.0;
         this.promoCode = "";
     }
+ // ✅ AJOUT : expose juste l'ID et le numéro d'ordre de l'intervention liée
+    public Long getInterventionId() {
+        return intervention != null ? intervention.getId() : null;
+    }
 
+    public String getNumeroOrdreIntervention() {
+        return intervention != null ? intervention.getNumeroOrdre() : null;
+    }
     // Getters et Setters
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }

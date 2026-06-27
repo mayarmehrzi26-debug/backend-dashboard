@@ -19,7 +19,7 @@ export class SidebarComponent implements OnInit {
 
   menuItems = [
     { path: '/app/dashboard', icon: 'bi-speedometer2', label: 'Dashboard' },
-    { path: '/app/clients', icon: 'bi-people', label: 'Clients', adminOnly: true },
+    { path: '/app/clients', icon: 'bi-people', label: 'Clients'},
     { 
       label: 'Interventions', 
       icon: 'bi-tools',
@@ -30,8 +30,8 @@ export class SidebarComponent implements OnInit {
     },
     // ===== CALENDRIER INDÉPENDANT =====
     { path: '/app/calendrier', icon: 'bi-calendar3', label: 'Calendrier' },
-    { path: '/app/prestations', icon: 'bi-tags', label: 'Prestations' },
     { path: '/app/users', icon: 'bi-people-fill', label: ' Utilisateurs', adminOnly: true },
+{ path: '/app/rappels', icon: 'bi-bell', label: 'Rappels' },
     { path: '/app/profile', icon: 'bi-person-circle', label: 'Mon Profil' }
 
   ];

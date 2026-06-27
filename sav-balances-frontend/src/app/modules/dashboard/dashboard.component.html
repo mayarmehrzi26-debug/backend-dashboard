@@ -1,4 +1,3 @@
-<!-- src/app/modules/dashboard/dashboard.component.html -->
 <div class="dashboard">
   <div *ngIf="errorMessage" class="error-message">
     <i class="bi bi-exclamation-triangle"></i>
@@ -13,16 +12,14 @@
 
   <div *ngIf="!loading">
     
-    <!-- Statistiques -->
+    <!-- ===== STATISTIQUES ===== -->
     <div class="stats-grid">
-      <!-- Clients - visible pour ADMIN et USER uniquement -->
       <div class="stat-card" *ngIf="isAdmin || isUser">
         <i class="bi bi-people"></i>
         <h3>{{ stats.totalClients }}</h3>
         <p>Clients</p>
       </div>
       
-      <!-- Interventions Externes - visible pour tous -->
       <div class="stat-card stat-externe">
         <i class="bi bi-globe"></i>
         <h3 *ngIf="!isTechnicien">{{ stats.totalInterventionsExternes }}</h3>
@@ -31,7 +28,6 @@
         <small *ngIf="isTechnicien" class="stat-subtitle">(Mes interventions)</small>
       </div>
       
-      <!-- Interventions Internes - visible pour tous -->
       <div class="stat-card stat-interne">
         <i class="bi bi-house"></i>
         <h3 *ngIf="!isTechnicien">{{ stats.totalInterventionsInternes }}</h3>
@@ -40,11 +36,179 @@
         <small *ngIf="isTechnicien" class="stat-subtitle">(Mes interventions)</small>
       </div>
       
-      <!-- Utilisateurs - visible uniquement pour ADMIN -->
       <div class="stat-card" *ngIf="isAdmin">
         <i class="bi bi-person-badge"></i>
         <h3>{{ stats.totalUsers }}</h3>
         <p>Utilisateurs</p>
+      </div>
+    </div>
+
+    <!-- ===== RENTABILITÉ ===== -->
+    <div class="card rentabilite-card">
+      <div class="card-header">
+        <h3 class="card-title">
+          <i class="bi bi-graph-up-arrow"></i> Rentabilité
+        </h3>
+        <span class="badge badge-success" style="font-size: 0.9rem;">
+          Taux de recouvrement : {{ rentabilite.tauxRecouvrement }}%
+        </span>
+      </div>
+      
+      <div class="rentabilite-grid">
+        <div class="rentabilite-item">
+          <span class="label">💰 Chiffre d'affaires</span>
+          <span class="value">{{ rentabilite.totalChiffreAffaire | number:'1.2-2' }} DT</span>
+        </div>
+        <div class="rentabilite-item">
+          <span class="label">💳 Montant payé</span>
+          <span class="value text-success">{{ rentabilite.totalPaye | number:'1.2-2' }} DT</span>
+        </div>
+        <div class="rentabilite-item">
+          <span class="label">⏳ Restant à payer</span>
+          <span class="value text-danger">{{ rentabilite.totalRestant | number:'1.2-2' }} DT</span>
+        </div>
+        <div class="rentabilite-item">
+          <span class="label">📊 Moyenne par intervention</span>
+          <span class="value">{{ rentabilite.moyenneParIntervention | number:'1.2-2' }} DT</span>
+        </div>
+        <div class="rentabilite-item">
+          <span class="label">✅ Interventions payées</span>
+          <span class="value text-success">{{ rentabilite.nombreInterventionsPayees }}</span>
+        </div>
+        <div class="rentabilite-item">
+          <span class="label">❌ Interventions non payées</span>
+          <span class="value text-danger">{{ rentabilite.nombreInterventionsNonPayees }}</span>
+        </div>
+        <div class="rentabilite-item" style="grid-column: span 2;">
+          <div class="progress-container">
+            <span class="label">Progression de paiement</span>
+            <div class="progress-bar-wrapper">
+              <div class="progress-bar-fill" 
+                   [style.width.%]="rentabilite.tauxRecouvrement"
+                   [style.background]="rentabilite.tauxRecouvrement >= 70 ? '#28a745' : rentabilite.tauxRecouvrement >= 40 ? '#ffc107' : '#dc3545'">
+                {{ rentabilite.tauxRecouvrement }}%
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== FILTRES ===== -->
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title">
+          <i class="bi bi-funnel"></i> Filtrer les interventions
+          <span class="badge badge-primary" style="font-size: 0.7rem;" *ngIf="filteredInterventions.length > 0">
+            {{ filteredInterventions.length }} résultat(s)
+          </span>
+        </h3>
+        <div style="display: flex; gap: 10px;">
+          <button class="btn btn-outline-primary btn-sm" (click)="toggleFilters()">
+            <i class="bi bi-funnel"></i> {{ showFilters ? 'Masquer' : 'Afficher' }} les filtres
+          </button>
+          <button class="btn btn-secondary btn-sm" (click)="refresh()" title="Rafraîchir">
+            <i class="bi bi-arrow-repeat"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Panneau des filtres -->
+      <div class="filters-panel" *ngIf="showFilters">
+        <div class="filters-grid">
+          <div class="filter-group">
+            <label>Type</label>
+            <select class="form-control" [(ngModel)]="filtres.type" (change)="applyFilters()">
+              <option *ngFor="let opt of typeOptions" [value]="opt.value">{{ opt.label }}</option>
+            </select>
+          </div>
+          
+          <div class="filter-group">
+            <label>Statut</label>
+            <select class="form-control" [(ngModel)]="filtres.statut" (change)="applyFilters()">
+              <option *ngFor="let opt of statutOptions" [value]="opt.value">{{ opt.label }}</option>
+            </select>
+          </div>
+          
+          <div class="filter-group">
+            <label>Société</label>
+            <input type="text" class="form-control" [(ngModel)]="filtres.societe" (input)="applyFilters()" placeholder="Rechercher...">
+          </div>
+          
+          <div class="filter-group">
+            <label>Technicien</label>
+            <input type="text" class="form-control" [(ngModel)]="filtres.technicien" (input)="applyFilters()" placeholder="Rechercher...">
+          </div>
+          
+          <div class="filter-group">
+            <label>Date début</label>
+            <input type="date" class="form-control" [(ngModel)]="filtres.dateDebut" (change)="applyFilters()">
+          </div>
+          
+          <div class="filter-group">
+            <label>Date fin</label>
+            <input type="date" class="form-control" [(ngModel)]="filtres.dateFin" (change)="applyFilters()">
+          </div>
+          
+          <div class="filter-group">
+            <label>Montant min</label>
+            <input type="number" class="form-control" [(ngModel)]="filtres.minMontant" (input)="applyFilters()" placeholder="0">
+          </div>
+          
+          <div class="filter-group">
+            <label>Montant max</label>
+            <input type="number" class="form-control" [(ngModel)]="filtres.maxMontant" (input)="applyFilters()" placeholder="1000">
+          </div>
+        </div>
+        
+        <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 15px;">
+          <button class="btn btn-secondary btn-sm" (click)="resetFilters()">
+            <i class="bi bi-x-circle"></i> Réinitialiser
+          </button>
+        </div>
+      </div>
+
+      <!-- Résultats filtrés -->
+      <div *ngIf="filteredInterventions.length > 0" class="table-container" style="margin-top: 15px;">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>N° Ordre</th>
+              <th>Type</th>
+              <th>Société</th>
+              <th>Réclamation</th>
+              <th>Technicien</th>
+              <th>Statut</th>
+              <th class="text-right">Montant</th>
+              <th class="text-right">Payé</th>
+              <th>Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let item of filteredInterventions">
+              <td><strong>{{ item.numeroOrdre }}</strong></td>
+              <td>
+                <span class="badge" [class.badge-info]="item.type === 'INTERNE'" [class.badge-success]="item.type === 'EXTERNE'">
+                  {{ item.type === 'INTERNE' ? '🏠 Interne' : '🌍 Externe' }}
+                </span>
+              </td>
+              <td>{{ item.societe }}</td>
+              <td>{{ item.reclamation }}</td>
+              <td>{{ item.technicien }}</td>
+              <td>
+                <span class="badge" [class]="getStatutClass(item.statutIntervention)">
+                  {{ getStatutLabel(item.statutIntervention) }}
+                </span>
+              </td>
+              <td class="text-right">{{ item.montantTotal || 0 }} DT</td>
+              <td class="text-right text-success">{{ item.montantPaye || 0 }} DT</td>
+              <td>{{ item.dateReclamation | date:'dd/MM/yyyy' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div *ngIf="filteredInterventions.length === 0 && !loading" class="no-data" style="padding: 20px;">
+        <i class="bi bi-inbox"></i> Aucune intervention ne correspond aux filtres
       </div>
     </div>
 

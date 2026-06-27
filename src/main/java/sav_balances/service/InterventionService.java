@@ -1,15 +1,12 @@
 package sav_balances.service;
 
 import java.util.List;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-
+import org.springframework.transaction.annotation.Transactional;
 import sav_balances.entity.Intervention;
-import sav_balances.entity.Prestation;
-import sav_balances.repository.BalanceRepository;
 import sav_balances.repository.InterventionRepository;
-import sav_balances.repository.PrestationRepository;
+import sav_balances.repository.TransactionRepository;
 
 @Service
 public class InterventionService {
@@ -18,21 +15,13 @@ public class InterventionService {
     private InterventionRepository repo;
     
     @Autowired
-    private BalanceRepository balanceRepository;
-    
-    @Autowired
-    private PrestationRepository prestationRepository;
+    private TransactionRepository transactionRepository;
 
+    @Transactional
     public Intervention save(Intervention i) {
         if (i.getDateReclamation() == null) {
             i.setDateReclamation(java.time.LocalDateTime.now());
         }
-        // ========== CORRECTION : NE PAS FORCER dateOrdre ==========
-        // On laisse la date d'intervention vide si elle n'est pas fournie
-        // if (i.getDateOrdre() == null) {
-        //     i.setDateOrdre(java.time.LocalDateTime.now());
-        // }
-        
         if (i.getType() == null || i.getType().isEmpty()) {
             i.setType("INTERNE");
         }
@@ -40,18 +29,27 @@ public class InterventionService {
             i.setReference("");
         }
         
-        if (i.getMontantTotal() == null || i.getMontantTotal() == 0) {
-            Double montant = i.getPrixEstime();
-            if (montant == null) {
-                montant = i.getPrixReel();
-            }
-            if (montant == null) {
-                montant = 0.0;
-            }
-            i.setMontantTotal(montant);
+        // Si le prix estimé est défini, mettre à jour le montant total
+        if (i.getPrixEstime() != null && i.getPrixEstime() > 0) {
+            i.setMontantTotal(i.getPrixEstime());
             i.setMontantPaye(0.0);
-            i.setMontantRestant(montant);
+            i.setMontantRestant(i.getPrixEstime());
+            
+            // Si statut EN_ATTENTE, passer à CONFIRME
+            if (i.getStatutIntervention() == null || i.getStatutIntervention() == Intervention.StatutIntervention.EN_ATTENTE) {
+                i.setStatutIntervention(Intervention.StatutIntervention.CONFIRME);
+            }
             i.setStatutPaiement(Intervention.StatutPaiement.EN_ATTENTE);
+        } else {
+            if (i.getMontantTotal() == null || i.getMontantTotal() == 0) {
+                Double montant = i.getPrixEstime();
+                if (montant == null) montant = i.getPrixReel();
+                if (montant == null) montant = 0.0;
+                i.setMontantTotal(montant);
+                i.setMontantPaye(0.0);
+                i.setMontantRestant(montant);
+                i.setStatutPaiement(Intervention.StatutPaiement.EN_ATTENTE);
+            }
         }
         
         if (i.getStatutIntervention() == null) {
@@ -59,6 +57,65 @@ public class InterventionService {
         }
         
         return repo.save(i);
+    }
+
+    @Transactional
+    public Intervention updateWithPreservation(Long id, Intervention intervention) {
+        Intervention existing = repo.findById(id).orElse(null);
+        if (existing == null) return save(intervention);
+        
+        // Préserver les champs non modifiés
+        if (intervention.getType() == null || intervention.getType().isEmpty()) {
+            intervention.setType(existing.getType());
+        }
+        if (intervention.getDateReclamation() == null) {
+            intervention.setDateReclamation(existing.getDateReclamation());
+        }
+        if (intervention.getNumeroOrdre() == null || intervention.getNumeroOrdre().isEmpty()) {
+            intervention.setNumeroOrdre(existing.getNumeroOrdre());
+        }
+        if (intervention.getStatutIntervention() == null) {
+            intervention.setStatutIntervention(existing.getStatutIntervention());
+        }
+        if (intervention.getMontantTotal() == null) {
+            intervention.setMontantTotal(existing.getMontantTotal());
+        }
+        if (intervention.getMontantPaye() == null) {
+            intervention.setMontantPaye(existing.getMontantPaye());
+        }
+        if (intervention.getMontantRestant() == null) {
+            intervention.setMontantRestant(existing.getMontantRestant());
+        }
+        if (intervention.getStatutPaiement() == null) {
+            intervention.setStatutPaiement(existing.getStatutPaiement());
+        }
+        if (intervention.getReference() == null || intervention.getReference().isEmpty()) {
+            intervention.setReference(existing.getReference());
+        }
+        if (intervention.getBascule() == null || intervention.getBascule().isEmpty()) {
+            intervention.setBascule(existing.getBascule());
+        }
+        if (intervention.getReclamation() == null || intervention.getReclamation().isEmpty()) {
+            intervention.setReclamation(existing.getReclamation());
+        }
+        if (intervention.getTechnicien() == null || intervention.getTechnicien().isEmpty()) {
+            intervention.setTechnicien(existing.getTechnicien());
+        }
+        if (intervention.getSociete() == null || intervention.getSociete().isEmpty()) {
+            intervention.setSociete(existing.getSociete());
+        }
+        if (intervention.getPrixPropose() == null) {
+            intervention.setPrixPropose(existing.getPrixPropose());
+        }
+        if (intervention.getDateDiagnostic() == null) {
+            intervention.setDateDiagnostic(existing.getDateDiagnostic());
+        }
+        if (intervention.getDateRecuperation() == null) {
+            intervention.setDateRecuperation(existing.getDateRecuperation());
+        }
+        
+        intervention.setId(id);
+        return repo.save(intervention);
     }
 
     public List<Intervention> getAll() {
@@ -72,86 +129,34 @@ public class InterventionService {
     public void deleteById(Long id) {
         repo.deleteById(id);
     }
-    
-    public Intervention saveWithPrestation(Intervention i, Long prestationId) {
-        if (i.getDateReclamation() == null) {
-            i.setDateReclamation(java.time.LocalDateTime.now());
-        }
-        // ========== CORRECTION : NE PAS FORCER dateOrdre ==========
-        // if (i.getDateOrdre() == null) {
-        //     i.setDateOrdre(java.time.LocalDateTime.now());
-        // }
-        
-        if (i.getReference() == null) {
-            i.setReference("");
-        }
-        
-        if (prestationId != null) {
-            Prestation prestation = prestationRepository.findById(prestationId).orElse(null);
-            if (prestation != null) {
-                i.setPrestation(prestation);
-                if (prestation.getPrixForfait() != null) {
-                    i.setPrixEstime(prestation.getPrixForfait());
-                } else if (prestation.getPrixHeure() != null && prestation.getDureeEstimeeHeures() != null) {
-                    i.setPrixEstime(prestation.getPrixHeure() * prestation.getDureeEstimeeHeures());
-                }
-                if (prestation.getNom() != null) {
-                    i.setReclamation(prestation.getNom());
-                }
-            }
-        }
-        
-        if (i.getMontantTotal() == null || i.getMontantTotal() == 0) {
-            Double montant = i.getPrixEstime();
-            if (montant == null) {
-                montant = i.getPrixReel();
-            }
-            if (montant == null) {
-                montant = 0.0;
-            }
-            i.setMontantTotal(montant);
-            i.setMontantPaye(0.0);
-            i.setMontantRestant(montant);
-            i.setStatutPaiement(Intervention.StatutPaiement.EN_ATTENTE);
-        }
-        
-        return repo.save(i);
-    }
 
-    public List<Intervention> getInterventionsByPrestation(Long prestationId) {
-        return repo.findByPrestationId(prestationId);
-    }
-    
     public List<Intervention> getByType(String type) {
         return repo.findByType(type);
     }
     
+    @Transactional
     public Intervention refreshMontants(Long interventionId) {
         Intervention intervention = repo.findById(interventionId).orElse(null);
         if (intervention == null) return null;
         
-        Double totalPaye = repo.sumMontantPayeByIntervention(interventionId);
+        Double totalPaye = transactionRepository.sumMontantPayeByIntervention(interventionId);
         if (totalPaye == null) totalPaye = 0.0;
         
         Double montantTotal = intervention.getMontantTotal();
         if (montantTotal == null || montantTotal == 0) {
             montantTotal = intervention.getPrixEstime();
-            if (montantTotal == null) {
-                montantTotal = intervention.getPrixReel();
-            }
-            if (montantTotal == null) {
-                montantTotal = 0.0;
-            }
+            if (montantTotal == null) montantTotal = intervention.getPrixReel();
+            if (montantTotal == null) montantTotal = 0.0;
             intervention.setMontantTotal(montantTotal);
         }
         
         intervention.setMontantPaye(totalPaye);
-        Double montantRestant = montantTotal - totalPaye;
-        if (montantRestant < 0) montantRestant = 0.0;
+        Double montantRestant = Math.max(0, montantTotal - totalPaye);
         intervention.setMontantRestant(montantRestant);
         
+        // Mise à jour des statuts
         if (montantTotal == 0) {
-            intervention.setStatutPaiement(Intervention.StatutPaiement.PAYE);
+            intervention.setStatutPaiement(Intervention.StatutPaiement.EN_ATTENTE);
         } else if (montantRestant <= 0.01) {
             intervention.setStatutPaiement(Intervention.StatutPaiement.PAYE);
         } else if (totalPaye == 0) {
@@ -160,32 +165,10 @@ public class InterventionService {
             intervention.setStatutPaiement(Intervention.StatutPaiement.PARTIEL);
         }
         
-        if (intervention.getDateEcheance() != null && 
-            java.time.LocalDateTime.now().isAfter(intervention.getDateEcheance()) &&
-            montantRestant > 0) {
-            intervention.setStatutPaiement(Intervention.StatutPaiement.EN_RETARD);
-        }
-        
         return repo.save(intervention);
     }
     
-    public List<Intervention> getByStatutPaiement(Intervention.StatutPaiement statut) {
-        return repo.findByStatutPaiement(statut);
-    }
-    
-    public List<Intervention> getInterventionsEnRetard() {
-        return repo.findByDateEcheanceBeforeAndStatutPaiementNotPaye(java.time.LocalDateTime.now());
-    }
-    
-    public List<Intervention> getInterventionsPaiementPartiel() {
-        return repo.findByStatutPaiement(Intervention.StatutPaiement.PARTIEL);
-    }
-    
-    public List<Intervention> getInterventionsPayees() {
-        return repo.findByStatutPaiement(Intervention.StatutPaiement.PAYE);
-    }
-    
-    public List<Intervention> getInterventionsEnAttente() {
-        return repo.findByStatutPaiement(Intervention.StatutPaiement.EN_ATTENTE);
+    public List<Intervention> getInterventionsByClient(String societe) {
+        return repo.findBySociete(societe);
     }
 }

@@ -16,7 +16,8 @@ export class RoleGuard implements CanActivate {
     'calendrier',
     'balances',
     'prestations',
-        'profile'
+        'profile',
+        'rappels'
 
   ];
 
@@ -29,7 +30,8 @@ export class RoleGuard implements CanActivate {
     'balances',
         'prestations',
 
-    'profile'
+    'profile',
+    
   ]; 
 
   constructor(private authService: AuthService, private router: Router) {}

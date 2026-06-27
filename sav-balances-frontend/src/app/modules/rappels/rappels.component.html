@@ -1,0 +1,323 @@
+<div class="rappels-container">
+  <!-- En-tête avec statistiques -->
+  <div class="card">
+ <div class="card-header">
+  <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+    <h3>
+      <i class="bi bi-bell-fill" style="color: #ffc107;"></i>
+      Rappels de Poinçonnage
+      <span class="badge badge-primary" style="font-size: 0.8rem;">
+        {{ totalRappels }} rappels
+      </span>
+    </h3>
+    <div style="display: flex; gap: 10px;">
+      <!-- ✅ BOUTON GÉNÉRER -->
+      <button class="btn btn-outline-primary" (click)="genererRappels()" [disabled]="isGenerating">
+        <i class="bi" [class.bi-arrow-repeat]="!isGenerating" [class.bi-hourglass-split]="isGenerating"></i>
+        {{ isGenerating ? 'Génération...' : 'Générer les rappels' }}
+      </button>
+      <button class="btn btn-secondary" (click)="loadRappels()">
+        <i class="bi bi-arrow-repeat"></i> Rafraîchir
+      </button>
+    </div>
+  </div>
+</div>
+
+    <!-- Statistiques en cartes -->
+    <div class="stats-grid">
+      <div class="stat-card stat-total">
+        <div class="stat-icon"><i class="bi bi-bell"></i></div>
+        <div class="stat-content">
+          <span class="stat-number">{{ totalRappels }}</span>
+          <span class="stat-label">Total Rappels</span>
+        </div>
+      </div>
+      <div class="stat-card stat-active">
+        <div class="stat-icon"><i class="bi bi-check-circle"></i></div>
+        <div class="stat-content">
+          <span class="stat-number">{{ rappelsActifs }}</span>
+          <span class="stat-label">Actifs</span>
+        </div>
+      </div>
+      <div class="stat-card stat-encours">
+        <div class="stat-icon"><i class="bi bi-exclamation-triangle"></i></div>
+        <div class="stat-content">
+          <span class="stat-number">{{ rappelsEnCours }}</span>
+          <span class="stat-label">En cours</span>
+        </div>
+      </div>
+      <div class="stat-card stat-expire">
+        <div class="stat-icon"><i class="bi bi-x-circle"></i></div>
+        <div class="stat-content">
+          <span class="stat-number">{{ rappelsExpiresCount }}</span>
+          <span class="stat-label">Expirés</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Barre de recherche -->
+    <div class="search-container">
+      <div class="search-box">
+        <i class="bi bi-search search-icon"></i>
+        <input 
+          type="text" 
+          class="search-input" 
+          placeholder="Rechercher par société, équipement, n° ordre..."
+          [(ngModel)]="searchTerm"
+          (input)="filterRappels()"
+          (keyup.escape)="clearSearch()"
+        />
+        <button class="search-clear" *ngIf="searchTerm.length > 0" (click)="clearSearch()">
+          <i class="bi bi-x-circle"></i>
+        </button>
+      </div>
+      <div class="filter-group">
+        <select class="form-select" [(ngModel)]="selectedStatut" (change)="filterRappels()">
+          <option value="tous">📊 Tous les statuts</option>
+          <option value="ACTIF">✅ Actif</option>
+          <option value="EN_COURS">⚠️ En cours</option>
+          <option value="EXPIRE">🚨 Expiré</option>
+          <option value="TRAITE">📌 Traité</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Liste des rappels -->
+   <div *ngIf="loading" class="loading">
+  <i class="bi bi-hourglass-split"></i> Chargement des rappels...
+  <p style="font-size: 0.8rem; color: #6c757d; margin-top: 10px;">
+    <small>Vérification de la connexion au serveur...</small>
+  </p>
+</div>
+
+<!-- Ajouter un message pour debug -->
+<div *ngIf="!loading && filteredRappels.length === 0" class="no-data">
+  <i class="bi bi-inbox" style="font-size: 3rem; color: #6c757d;"></i>
+  <p>Aucun rappel trouvé</p>
+  <button class="btn btn-outline-primary btn-sm" (click)="genererRappels()" style="margin-top: 10px;">
+    <i class="bi bi-plus-circle"></i> Générer des rappels
+  </button>
+</div>
+
+    <div *ngIf="!loading && filteredRappels.length === 0" class="no-data">
+      <i class="bi bi-inbox" style="font-size: 3rem; color: #6c757d;"></i>
+      <p>Aucun rappel trouvé</p>
+    </div>
+
+    <div *ngIf="!loading && filteredRappels.length > 0" class="rappel-list">
+      <div *ngFor="let rappel of filteredRappels" 
+           class="rappel-card" 
+           [class.urgent]="rappel.joursRestants <= 7"
+           [class.very-urgent]="rappel.joursRestants <= 3"
+           [class.expire]="rappel.joursRestants <= 0"
+           [class.traite]="rappel.statut === 'TRAITE'"
+           (click)="openRappelDetails(rappel)">
+        
+        <!-- Timeline visuelle -->
+        <div class="rappel-timeline">
+          <div class="timeline-dot" [class.urgent]="rappel.joursRestants <= 7" 
+               [class.very-urgent]="rappel.joursRestants <= 3"
+               [class.expire]="rappel.joursRestants <= 0">
+            <i [class]="getJoursIcon(rappel.joursRestants)"></i>
+          </div>
+          <div class="timeline-line">
+            <div class="timeline-progress" 
+                 [style.width.%]="getProgressPercentage(rappel.joursRestants)"
+                 [style.background]="rappel.joursRestants <= 0 ? '#dc3545' : 
+                                    rappel.joursRestants <= 7 ? '#ff6b6b' : 
+                                    rappel.joursRestants <= 15 ? '#ffc107' : '#0d3e23'">
+            </div>
+          </div>
+        </div>
+
+        <!-- Contenu -->
+        <div class="rappel-content">
+          <div class="rappel-header">
+            <div class="rappel-title">
+              <span class="numero-ordre">#{{ rappel.numeroOrdre }}</span>
+              <span class="societe">{{ rappel.societe }}</span>
+            </div>
+            <div class="rappel-status">
+              <span class="badge" [class]="statutColors[rappel.statut]">
+                <i [class]="statutIcons[rappel.statut]"></i>
+                {{ statutLabels[rappel.statut] }}
+              </span>
+              <span class="jours-badge" 
+                    [style.background]="getJoursColor(rappel.joursRestants)"
+                    [style.color]="rappel.joursRestants <= 0 ? 'white' : 'white'">
+                <i [class]="getJoursIcon(rappel.joursRestants)"></i>
+                {{ getJoursText(rappel.joursRestants) }}
+              </span>
+            </div>
+          </div>
+
+          <div class="rappel-body">
+            <div class="rappel-info-grid">
+              <div class="info-item">
+                <span class="label">🔧 Équipement</span>
+                <span class="value"><strong>{{ rappel.equipement }}</strong></span>
+              </div>
+              <div class="info-item">
+                <span class="label">🔢 Référence</span>
+                <span class="value">{{ rappel.reference || '-' }}</span>
+              </div>
+              <div class="info-item">
+                <span class="label">👤 Responsable</span>
+                <span class="value">{{ rappel.responsable || '-' }}</span>
+              </div>
+              <div class="info-item">
+                <span class="label">📞 Téléphone</span>
+                <span class="value">{{ rappel.telephone || '-' }}</span>
+              </div>
+              <div class="info-item">
+                <span class="label">📅 Dernier poinçonnage</span>
+                <span class="value">{{ rappel.dateDernierPoinconnage | date:'dd/MM/yyyy' }}</span>
+              </div>
+              <div class="info-item">
+                <span class="label">📆 Prochain poinçonnage</span>
+                <span class="value" [style.color]="getJoursColor(rappel.joursRestants)">
+                  <strong>{{ rappel.dateProchainPoinconnage | date:'dd/MM/yyyy' }}</strong>
+                </span>
+              </div>
+            </div>
+
+            <!-- Compteur visuel -->
+            <div class="countdown-container" *ngIf="rappel.joursRestants > 0 && rappel.joursRestants <= 30">
+              <div class="countdown-ring">
+                <svg width="80" height="80" viewBox="0 0 80 80">
+                  <circle class="ring-bg" cx="40" cy="40" r="35" />
+                  <circle class="ring-progress" cx="40" cy="40" r="35"
+                          [style.stroke-dasharray]="219.91"
+                          [style.stroke-dashoffset]="219.91 - (219.91 * getProgressPercentage(rappel.joursRestants) / 100)"
+                          [style.stroke]="getJoursColor(rappel.joursRestants)" />
+                </svg>
+                <div class="countdown-number">
+                  <span>{{ rappel.joursRestants }}</span>
+                  <small>jours</small>
+                </div>
+              </div>
+            </div>
+
+            <!-- Notification -->
+            <div class="rappel-actions" *ngIf="!rappel.notifie && rappel.joursRestants <= 15">
+              <button class="btn btn-sm btn-primary" (click)="marquerNotifie(rappel); $event.stopPropagation()">
+                <i class="bi bi-check2"></i> Marquer comme notifié
+              </button>
+            </div>
+            <div class="rappel-actions" *ngIf="rappel.notifie">
+              <span class="badge badge-success">
+                <i class="bi bi-check-circle-fill"></i> Notifié le {{ rappel.dateNotification | date:'dd/MM/yyyy HH:mm' }}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Icône de notification -->
+        <div class="rappel-notification" *ngIf="!rappel.notifie && rappel.joursRestants <= 15">
+          <span class="notification-pulse"></span>
+          <i class="bi bi-bell-fill"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== MODAL DÉTAILS ===== -->
+  <div class="modal" *ngIf="showRappelModal">
+    <div class="modal-content modal-large">
+      <div class="modal-header">
+        <h3>
+          <i class="bi bi-bell-fill"></i>
+          Détails du rappel - #{{ selectedRappel?.numeroOrdre }}
+        </h3>
+        <button class="close" (click)="closeRappelModal()">&times;</button>
+      </div>
+      
+      <div *ngIf="selectedRappel" class="modal-body">
+        <div class="detail-grid">
+          <div class="detail-item">
+            <label>Société</label>
+            <span><strong>{{ selectedRappel.societe }}</strong></span>
+          </div>
+          <div class="detail-item">
+            <label>Équipement</label>
+            <span>{{ selectedRappel.equipement }}</span>
+          </div>
+          <div class="detail-item">
+            <label>Référence</label>
+            <span>{{ selectedRappel.reference || '-' }}</span>
+          </div>
+          <div class="detail-item">
+            <label>Responsable</label>
+            <span>{{ selectedRappel.responsable || '-' }}</span>
+          </div>
+          <div class="detail-item">
+            <label>Téléphone</label>
+            <span>{{ selectedRappel.telephone || '-' }}</span>
+          </div>
+          <div class="detail-item">
+            <label>Email</label>
+            <span>{{ selectedRappel.email || '-' }}</span>
+          </div>
+          <div class="detail-item">
+            <label>Date dernier poinçonnage</label>
+            <span>{{ selectedRappel.dateDernierPoinconnage | date:'dd/MM/yyyy HH:mm' }}</span>
+          </div>
+          <div class="detail-item">
+            <label>Date prochain poinçonnage</label>
+<span style="font-weight: bold;" [style.color]="getJoursColor(selectedRappel.joursRestants)">
+              {{ selectedRappel.dateProchainPoinconnage | date:'dd/MM/yyyy HH:mm' }}
+            </span>
+          </div>
+          <div class="detail-item">
+            <label>Jours restants</label>
+<span style="font-weight: bold;" [style.color]="getJoursColor(selectedRappel.joursRestants)">
+              {{ getJoursText(selectedRappel.joursRestants) }}
+            </span>
+          </div>
+          <div class="detail-item">
+            <label>Statut</label>
+            <span class="badge" [class]="statutColors[selectedRappel.statut]">
+              <i [class]="statutIcons[selectedRappel.statut]"></i>
+              {{ statutLabels[selectedRappel.statut] }}
+            </span>
+          </div>
+          <div class="detail-item">
+            <label>Notifié</label>
+            <span *ngIf="selectedRappel.notifie" class="badge badge-success">
+              <i class="bi bi-check-circle-fill"></i> Oui
+            </span>
+            <span *ngIf="!selectedRappel.notifie" class="badge badge-warning">
+              <i class="bi bi-clock"></i> Non
+            </span>
+          </div>
+          <div class="detail-item" *ngIf="selectedRappel.dateNotification">
+            <label>Date notification</label>
+            <span>{{ selectedRappel.dateNotification | date:'dd/MM/yyyy HH:mm' }}</span>
+          </div>
+        </div>
+
+        <!-- Barre de progression -->
+        <div class="detail-progress">
+          <label>Progression vers le prochain poinçonnage</label>
+          <div class="progress-bar-container">
+            <div class="progress-bar" 
+                 [style.width.%]="getProgressPercentage(selectedRappel.joursRestants)"
+                 [style.background]="selectedRappel.joursRestants <= 0 ? '#dc3545' : 
+                                    selectedRappel.joursRestants <= 7 ? '#ff6b6b' : 
+                                    selectedRappel.joursRestants <= 15 ? '#ffc107' : '#0d3e23'">
+              {{ getProgressPercentage(selectedRappel.joursRestants) }}%
+            </div>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+          <button class="btn btn-secondary" (click)="closeRappelModal()">Fermer</button>
+          <button *ngIf="!selectedRappel.notifie" class="btn btn-primary" 
+                  (click)="marquerNotifie(selectedRappel); closeRappelModal()">
+            <i class="bi bi-check2"></i> Marquer comme notifié
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

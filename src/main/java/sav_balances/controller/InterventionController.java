@@ -1,10 +1,9 @@
 package sav_balances.controller;
 
 import java.util.List;
-
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
 import sav_balances.entity.Intervention;
 import sav_balances.service.InterventionService;
 
@@ -37,61 +36,7 @@ public class InterventionController {
     @PutMapping("/{id}")
     public Intervention update(@PathVariable Long id, @RequestBody Intervention intervention) {
         intervention.setId(id);
-        
-        // Conserver les données existantes
-        Intervention existing = service.getById(id);
-        if (existing != null) {
-            if (intervention.getType() == null || intervention.getType().isEmpty()) {
-                intervention.setType(existing.getType());
-            }
-            if (intervention.getDateReclamation() == null) {
-                intervention.setDateReclamation(existing.getDateReclamation());
-            }
-            if (intervention.getNumeroOrdre() == null || intervention.getNumeroOrdre().isEmpty()) {
-                intervention.setNumeroOrdre(existing.getNumeroOrdre());
-            }
-            if (intervention.getStatutIntervention() == null) {
-                intervention.setStatutIntervention(existing.getStatutIntervention());
-            }
-            if (intervention.getMontantTotal() == null) {
-                intervention.setMontantTotal(existing.getMontantTotal());
-            }
-            if (intervention.getMontantPaye() == null) {
-                intervention.setMontantPaye(existing.getMontantPaye());
-            }
-            if (intervention.getMontantRestant() == null) {
-                intervention.setMontantRestant(existing.getMontantRestant());
-            }
-            if (intervention.getStatutPaiement() == null) {
-                intervention.setStatutPaiement(existing.getStatutPaiement());
-            }
-            if (intervention.getReference() == null || intervention.getReference().isEmpty()) {
-                intervention.setReference(existing.getReference());
-            }
-            if (intervention.getBascule() == null || intervention.getBascule().isEmpty()) {
-                intervention.setBascule(existing.getBascule());
-            }
-            if (intervention.getReclamation() == null || intervention.getReclamation().isEmpty()) {
-                intervention.setReclamation(existing.getReclamation());
-            }
-            if (intervention.getTechnicien() == null || intervention.getTechnicien().isEmpty()) {
-                intervention.setTechnicien(existing.getTechnicien());
-            }
-            if (intervention.getSociete() == null || intervention.getSociete().isEmpty()) {
-                intervention.setSociete(existing.getSociete());
-            }
-            if (intervention.getPrixPropose() == null) {
-                intervention.setPrixPropose(existing.getPrixPropose());
-            }
-            if (intervention.getDateDiagnostic() == null) {
-                intervention.setDateDiagnostic(existing.getDateDiagnostic());
-            }
-            if (intervention.getDateRecuperation() == null) {
-                intervention.setDateRecuperation(existing.getDateRecuperation());
-            }
-        }
-        
-        return service.save(intervention);
+        return service.updateWithPreservation(id, intervention);
     }
     
     @DeleteMapping("/{id}")
@@ -103,8 +48,42 @@ public class InterventionController {
     public List<Intervention> getByType(@PathVariable String type) {
         return service.getByType(type);
     }
+    
     @PostMapping("/{id}/refresh")
     public Intervention refreshIntervention(@PathVariable Long id) {
         return service.refreshMontants(id);
+    }
+    
+    @GetMapping("/client/{societe}")
+    public ResponseEntity<List<Intervention>> getInterventionsByClient(@PathVariable String societe) {
+        List<Intervention> interventions = service.getInterventionsByClient(societe);
+        return ResponseEntity.ok(interventions);
+    }
+   
+    // ✅ Endpoint pour mettre à jour le prix estimé
+    @PostMapping("/{id}/prix")
+    public ResponseEntity<?> updatePrix(@PathVariable Long id, @RequestBody Double prixEstime) {
+        try {
+            if (prixEstime == null || prixEstime <= 0) {
+                return ResponseEntity.badRequest().body("Le prix doit être supérieur à 0");
+            }
+            Intervention intervention = service.getById(id);
+            if (intervention == null) {
+                return ResponseEntity.notFound().build();
+            }
+            
+            // Mettre à jour le prix
+            intervention.setPrixEstime(prixEstime);
+            intervention.setMontantTotal(prixEstime);
+            intervention.setMontantPaye(0.0);
+            intervention.setMontantRestant(prixEstime);
+            intervention.setStatutIntervention(Intervention.StatutIntervention.CONFIRME);
+            intervention.setStatutPaiement(Intervention.StatutPaiement.EN_ATTENTE);
+            
+            Intervention updated = service.save(intervention);
+            return ResponseEntity.ok(updated);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
     }
 }

@@ -24,147 +24,140 @@ public class TransactionService {
     @Autowired
     private InterventionRepository interventionRepository;
 
+    /**
+     * Met à jour l'intervention lors de la définition de la date
+     * Passe en TERMINE et crée une transaction automatique
+     */
     @Transactional
-    public Transaction ajouterPaiement(Long interventionId, Transaction transaction) {
+    public Intervention mettreAJourDateIntervention(Long interventionId, LocalDateTime dateOrdre) {
         Intervention intervention = interventionRepository.findById(interventionId)
                 .orElseThrow(() -> new RuntimeException("Intervention non trouvée"));
-
-        if (transaction.getMontant() <= 0) {
-            throw new RuntimeException("Le montant doit être supérieur à 0");
-        }
-
-        // Récupérer les montants actuels
-        Double montantTotal = intervention.getMontantTotal();
-        Double montantPayeActuel = intervention.getMontantPaye() != null ? intervention.getMontantPaye() : 0.0;
         
-        // Si montantTotal est null ou 0, on utilise le montant de la transaction
+        if (intervention.getStatutIntervention() == Intervention.StatutIntervention.ANNULE) {
+            throw new RuntimeException("❌ Impossible de modifier une intervention annulée");
+        }
+        
+        // Définir la date d'intervention
+        intervention.setDateOrdre(dateOrdre);
+        
+        // Récupérer le montant total (prix estimé ou prix proposé)
+        Double montantTotal = intervention.getPrixEstime();
         if (montantTotal == null || montantTotal == 0) {
-            montantTotal = transaction.getMontant();
-            intervention.setMontantTotal(montantTotal);
-            intervention.setMontantPaye(0.0);
-            intervention.setMontantRestant(montantTotal);
-            intervention.setStatutPaiement(Intervention.StatutPaiement.EN_ATTENTE);
-            interventionRepository.save(intervention);
-            montantPayeActuel = 0.0;
+            montantTotal = intervention.getPrixPropose();
         }
-
-        // Calculer le reste à payer
-        Double montantRestant = montantTotal - montantPayeActuel;
-        if (montantRestant < 0) montantRestant = 0.0;
-
-        // Vérifier si déjà payé
-        if (montantTotal > 0 && montantRestant <= 0.01) {
-            throw new RuntimeException("Cette intervention est déjà entièrement payée");
+        if (montantTotal == null || montantTotal == 0) {
+            montantTotal = 0.0;
         }
-
-        // Vérifier que le montant ne dépasse pas le reste à payer
-        if (montantTotal > 0 && transaction.getMontant() > montantRestant) {
-            throw new RuntimeException("Le montant (" + transaction.getMontant() + 
-                                       " DT) dépasse le reste à payer (" + montantRestant + " DT)");
+        
+        // Mettre à jour les montants
+        intervention.setMontantTotal(montantTotal);
+        intervention.setMontantPaye(montantTotal);  // Payé = montant total
+        intervention.setMontantRestant(0.0);        // Restant = 0
+        
+        // Passer en TERMINE
+        intervention.setStatutIntervention(Intervention.StatutIntervention.TERMINE);
+        intervention.setStatutPaiement(Intervention.StatutPaiement.PAYE);
+        
+        // Créer une transaction automatique si montant > 0
+        if (montantTotal > 0) {
+            creerTransactionAutomatique(intervention, montantTotal);
+            logger.info("💰 Transaction automatique créée pour: {} - Montant: {} DT", 
+                       intervention.getNumeroOrdre(), montantTotal);
         }
+        
+        logger.info("✅ Intervention {} passée en TERMINE (date définie)", intervention.getNumeroOrdre());
+        
+        return interventionRepository.save(intervention);
+    }
 
-        // Enregistrer la transaction
+    /**
+     * Crée une transaction automatique
+     */
+    private void creerTransactionAutomatique(Intervention intervention, Double montant) {
+        Transaction transaction = new Transaction();
         transaction.setIntervention(intervention);
-        transaction.setDateTransaction(LocalDateTime.now());
+        transaction.setMontant(montant);
+        transaction.setMethode(Transaction.MethodePaiement.AUTOMATIQUE);
+        transaction.setReference("AUTO-" + intervention.getNumeroOrdre());
         transaction.setStatut(Transaction.StatutTransaction.VALIDE);
-
-        Transaction savedTransaction = transactionRepository.save(transaction);
+        transaction.setDateTransaction(LocalDateTime.now());
+        transaction.setNotes("Paiement automatique - Intervention terminée le " + LocalDateTime.now().toLocalDate());
         
-        // === CRUCIAL: Mettre à jour les montants ET les statuts ===
-        updateInterventionComplete(intervention);
-
-        return savedTransaction;
+        transactionRepository.save(transaction);
+        logger.info("💳 Transaction auto créée: {} - {} DT", intervention.getNumeroOrdre(), montant);
     }
 
-    @Transactional
-    public void updateInterventionComplete(Intervention intervention) {
-        // 1. Calculer le total payé
-        Double totalPaye = transactionRepository.sumMontantPayeByIntervention(intervention.getId());
-        if (totalPaye == null) totalPaye = 0.0;
-
-        // 2. Récupérer ou calculer le montant total
-        Double montantTotal = intervention.getMontantTotal();
-        if (montantTotal == null || montantTotal == 0) {
-            montantTotal = intervention.getPrixEstime();
-            if (montantTotal == null || montantTotal == 0) {
-                montantTotal = intervention.getPrixReel();
-            }
-            if (montantTotal == null || montantTotal == 0) {
-                montantTotal = totalPaye;
-            }
-            if (montantTotal == null || montantTotal == 0) {
-                montantTotal = 0.0;
-            }
-            intervention.setMontantTotal(montantTotal);
-        }
-
-        // 3. Mettre à jour les montants
-        intervention.setMontantPaye(totalPaye);
-        Double montantRestant = montantTotal - totalPaye;
-        if (montantRestant < 0) montantRestant = 0.0;
-        intervention.setMontantRestant(montantRestant);
-
-        // 4. === LOGIQUE DE STATUT DE PAIEMENT ===
-        if (montantTotal == 0) {
-            intervention.setStatutPaiement(Intervention.StatutPaiement.EN_ATTENTE);
-        } else if (montantRestant <= 0.01) {
-            intervention.setStatutPaiement(Intervention.StatutPaiement.PAYE);
-        } else if (totalPaye == 0) {
-            intervention.setStatutPaiement(Intervention.StatutPaiement.EN_ATTENTE);
-        } else {
-            intervention.setStatutPaiement(Intervention.StatutPaiement.PARTIEL);
-        }
-
-        // 5. === LOGIQUE DE STATUT D'INTERVENTION (CORRIGÉE) ===
-        // Ne pas écraser ANNULE
-        if (intervention.getStatutIntervention() != Intervention.StatutIntervention.ANNULE) {
-            // Règle 1: Paiement complet → TERMINE
-            if (montantTotal > 0 && totalPaye >= montantTotal) {
-                intervention.setStatutIntervention(Intervention.StatutIntervention.TERMINE);
-                logger.info("✅ Intervention {} passée en TERMINE (paiement complet)", intervention.getNumeroOrdre());
-            } 
-            // Règle 2: Date définie → CONFIRME
-            else if (intervention.getDateOrdre() != null) {
-                intervention.setStatutIntervention(Intervention.StatutIntervention.CONFIRME);
-            } 
-            // Règle 3: Sinon → EN_ATTENTE
-            else {
-                intervention.setStatutIntervention(Intervention.StatutIntervention.EN_ATTENTE);
-            }
-        }
-
-        // 6. Vérifier la date d'échéance
-        if (intervention.getDateEcheance() != null && 
-            LocalDateTime.now().isAfter(intervention.getDateEcheance()) &&
-            montantRestant > 0) {
-            intervention.setStatutPaiement(Intervention.StatutPaiement.EN_RETARD);
-        }
-
-        // 7. Sauvegarder
-        interventionRepository.save(intervention);
-        
-        // 8. Logs pour débogage
-        logger.info("=== MISE À JOUR INTERVENTION ===");
-        logger.info("ID: {}", intervention.getId());
-        logger.info("Numéro: {}", intervention.getNumeroOrdre());
-        logger.info("Montant Total: {}", montantTotal);
-        logger.info("Montant Payé: {}", totalPaye);
-        logger.info("Montant Restant: {}", montantRestant);
-        logger.info("Statut Intervention: {}", intervention.getStatutIntervention());
-        logger.info("Statut Paiement: {}", intervention.getStatutPaiement());
-        logger.info("================================");
-    }
-
-    // Ancienne méthode gardée pour compatibilité
-    @Transactional
-    public void updateInterventionMontants(Intervention intervention) {
-        updateInterventionComplete(intervention);
-    }
-
+    /**
+     * Récupère les transactions d'une intervention
+     */
     public List<Transaction> getTransactionsByIntervention(Long interventionId) {
         return transactionRepository.findByInterventionIdOrderByDateTransactionDesc(interventionId);
     }
 
+    /**
+     * Récupère les transactions par société client
+     */
+    public List<Transaction> getByClientSociete(String societe) {
+        logger.info("Récupération des transactions pour la société : {}", societe);
+        if (societe == null || societe.trim().isEmpty()) {
+            return List.of();
+        }
+        return transactionRepository.findByInterventionSociete(societe);
+    }
+
+    /**
+     * Ajoute un paiement manuel (pour les cas exceptionnels)
+     */
+   @Transactional
+public Transaction ajouterPaiementManuel(Long interventionId, Transaction transaction) {
+    Intervention intervention = interventionRepository.findById(interventionId)
+            .orElseThrow(() -> new RuntimeException("Intervention non trouvée"));
+
+    if (intervention.getStatutIntervention() == Intervention.StatutIntervention.ANNULE) {
+        throw new RuntimeException("❌ Impossible d'ajouter un paiement sur une intervention annulée");
+    }
+    if (intervention.getStatutIntervention() == Intervention.StatutIntervention.TERMINE) {
+        throw new RuntimeException("❌ L'intervention est déjà terminée");
+    }
+
+    // ✅ Si montantTotal est 0, on l'initialise avec le montant du paiement
+    Double montantTotal = intervention.getMontantTotal();
+    if (montantTotal == null || montantTotal == 0) {
+        montantTotal = transaction.getMontant();
+        intervention.setMontantTotal(montantTotal);
+    }
+
+    // Enregistrer la transaction
+    transaction.setIntervention(intervention);
+    transaction.setDateTransaction(LocalDateTime.now());
+    transaction.setStatut(Transaction.StatutTransaction.VALIDE);
+    Transaction saved = transactionRepository.save(transaction);
+
+    // Recalculer le total payé
+    Double totalPaye = transactionRepository.sumMontantPayeByIntervention(interventionId);
+    if (totalPaye == null) totalPaye = 0.0;
+
+    // Mettre à jour les montants de l'intervention
+    intervention.setMontantPaye(totalPaye);
+    Double montantRestant = Math.max(0, montantTotal - totalPaye);
+    intervention.setMontantRestant(montantRestant);
+
+    // Mise à jour des statuts
+    if (montantTotal > 0 && totalPaye >= montantTotal) {
+        intervention.setStatutPaiement(Intervention.StatutPaiement.PAYE);
+        intervention.setStatutIntervention(Intervention.StatutIntervention.TERMINE);
+    } else if (totalPaye > 0) {
+        intervention.setStatutPaiement(Intervention.StatutPaiement.PARTIEL);
+    } else {
+        intervention.setStatutPaiement(Intervention.StatutPaiement.EN_ATTENTE);
+    }
+
+    interventionRepository.save(intervention);
+    return saved;
+}
+    /**
+     * Annule une transaction
+     */
     @Transactional
     public void annulerTransaction(Long transactionId) {
         Transaction transaction = transactionRepository.findById(transactionId)
@@ -172,17 +165,33 @@ public class TransactionService {
         
         transaction.setStatut(Transaction.StatutTransaction.ANNULE);
         transactionRepository.save(transaction);
-        updateInterventionComplete(transaction.getIntervention());
-    }
-
-    public List<Transaction> getByClientSociete(String societe) {
-        logger.info("Récupération des transactions pour la société : {}", societe);
-        if (societe == null || societe.trim().isEmpty()) {
-            logger.warn("Société vide, retour d'une liste vide");
-            return List.of();
+        
+        // Recalculer les montants
+        Long interventionId = transaction.getIntervention().getId();
+        Double totalPaye = transactionRepository.sumMontantPayeByIntervention(interventionId);
+        if (totalPaye == null) totalPaye = 0.0;
+        
+        Intervention intervention = transaction.getIntervention();
+        Double montantTotal = intervention.getPrixEstime();
+        if (montantTotal == null || montantTotal == 0) {
+            montantTotal = intervention.getPrixPropose();
         }
-        List<Transaction> transactions = transactionRepository.findByInterventionSociete(societe);
-        logger.info("Nombre de transactions trouvées : {}", transactions.size());
-        return transactions;
+        if (montantTotal == null || montantTotal == 0) {
+            montantTotal = 0.0;
+        }
+        
+        intervention.setMontantPaye(totalPaye);
+        intervention.setMontantRestant(Math.max(0, montantTotal - totalPaye));
+        
+        if (totalPaye >= montantTotal && montantTotal > 0) {
+            intervention.setStatutPaiement(Intervention.StatutPaiement.PAYE);
+        } else if (totalPaye > 0) {
+            intervention.setStatutPaiement(Intervention.StatutPaiement.PARTIEL);
+        } else {
+            intervention.setStatutPaiement(Intervention.StatutPaiement.EN_ATTENTE);
+        }
+        
+        interventionRepository.save(intervention);
     }
+    
 }

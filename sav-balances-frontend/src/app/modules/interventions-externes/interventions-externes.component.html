@@ -3,17 +3,28 @@
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
       <h3 class="card-title">
         <i class="bi bi-globe"></i> Interventions Externes
+        <span class="badge badge-primary" style="font-size: 0.8rem; margin-left: 10px;">
+          {{ filteredInterventions.length }}
+        </span>
       </h3>
-    <div style="display: flex; gap: 10px;">
-  <button *ngIf="isAdmin" class="btn btn-primary" (click)="openForm()">
-    <i class="bi bi-plus-circle"></i> Nouvelle Intervention
-  </button>
-</div>
+      <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+        <!-- BOUTONS EXPORT -->
+        <button class="btn btn-success btn-sm" (click)="exportToCSV()" title="Exporter en CSV">
+          <i class="bi bi-file-earmark-spreadsheet"></i> CSV
+        </button>
+        <button class="btn btn-danger btn-sm" (click)="exportToPDF()" title="Exporter en PDF">
+          <i class="bi bi-file-pdf"></i> PDF
+        </button>
+        
+        <button class="btn btn-primary" (click)="openForm()">
+          <i class="bi bi-plus-circle"></i> Nouvelle Intervention
+        </button>
+      </div>
     </div>
 
-    <!-- Barre de recherche -->
-    <div class="search-container">
-      <div class="search-box">
+    <!-- ===== BARRE DE RECHERCHE ===== -->
+    <div class="search-container" style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 15px;">
+      <div class="search-box" style="flex: 1; min-width: 200px;">
         <i class="bi bi-search search-icon"></i>
         <input 
           type="text" 
@@ -26,12 +37,67 @@
         <button class="search-clear" *ngIf="searchInterventionsTerm.length > 0" (click)="clearInterventionsSearch()">
           <i class="bi bi-x-circle"></i>
         </button>
-        <span class="search-count" *ngIf="!loading">
-          {{ filteredInterventions.length }} intervention{{ filteredInterventions.length > 1 ? 's' : '' }}
+      </div>
+      <button class="btn btn-outline-primary btn-sm" (click)="toggleFilters()">
+        <i class="bi bi-funnel"></i> Filtres
+        <span class="badge badge-primary" style="font-size: 0.6rem; margin-left: 5px;" 
+              *ngIf="filterStatutIntervention !== 'tous' || filterStatutPaiement !== 'tous' || filterDateDebut || filterDateFin || filterSociete || filterTechnicien">
+          Actifs
         </span>
+      </button>
+      <button class="btn btn-outline-secondary btn-sm" (click)="resetFilters()" 
+              *ngIf="filterStatutIntervention !== 'tous' || filterStatutPaiement !== 'tous' || filterDateDebut || filterDateFin || filterSociete || filterTechnicien">
+        <i class="bi bi-x-circle"></i> Réinitialiser
+      </button>
+    </div>
+
+    <!-- ===== PANEL DES FILTRES ===== -->
+    <div class="filters-panel" *ngIf="showFilters" 
+         style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #e9ecef;">
+      <div class="row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+        <!-- Filtre Statut Intervention -->
+        <div class="form-group" style="margin-bottom: 0;">
+          <label style="font-size: 0.8rem; font-weight: bold; color: #0d3e23;">Statut Intervention</label>
+          <select class="form-control" [(ngModel)]="filterStatutIntervention" (change)="filterInterventions()" style="font-size: 0.9rem;">
+            <option *ngFor="let opt of statutInterventionOptions" [value]="opt.value">{{ opt.label }}</option>
+          </select>
+        </div>
+        
+        <!-- Filtre Statut Paiement -->
+        <div class="form-group" style="margin-bottom: 0;">
+          <label style="font-size: 0.8rem; font-weight: bold; color: #0d3e23;">Statut Paiement</label>
+          <select class="form-control" [(ngModel)]="filterStatutPaiement" (change)="filterInterventions()" style="font-size: 0.9rem;">
+            <option *ngFor="let opt of statutPaiementOptions" [value]="opt.value">{{ opt.label }}</option>
+          </select>
+        </div>
+
+        <!-- Filtre Société -->
+        <div class="form-group" style="margin-bottom: 0;">
+          <label style="font-size: 0.8rem; font-weight: bold; color: #0d3e23;">Société</label>
+          <input type="text" class="form-control" [(ngModel)]="filterSociete" (input)="filterInterventions()" placeholder="Rechercher..." style="font-size: 0.9rem;">
+        </div>
+
+        <!-- Filtre Technicien -->
+        <div class="form-group" style="margin-bottom: 0;">
+          <label style="font-size: 0.8rem; font-weight: bold; color: #0d3e23;">Technicien</label>
+          <input type="text" class="form-control" [(ngModel)]="filterTechnicien" (input)="filterInterventions()" placeholder="Rechercher..." style="font-size: 0.9rem;">
+        </div>
+
+        <!-- Filtre Date Début -->
+        <div class="form-group" style="margin-bottom: 0;">
+          <label style="font-size: 0.8rem; font-weight: bold; color: #0d3e23;">Date Début</label>
+          <input type="date" class="form-control" [(ngModel)]="filterDateDebut" (change)="filterInterventions()" style="font-size: 0.9rem;">
+        </div>
+
+        <!-- Filtre Date Fin -->
+        <div class="form-group" style="margin-bottom: 0;">
+          <label style="font-size: 0.8rem; font-weight: bold; color: #0d3e23;">Date Fin</label>
+          <input type="date" class="form-control" [(ngModel)]="filterDateFin" (change)="filterInterventions()" style="font-size: 0.9rem;">
+        </div>
       </div>
     </div>
 
+    <!-- ===== TABLEAU ===== -->
     <div class="table-container">
       <table class="table">
         <thead>
@@ -58,8 +124,8 @@
             <td colspan="9" class="loading">
               <i class="bi bi-search"></i> Aucune correspondance
               <br>
-              <button class="btn btn-sm btn-secondary" (click)="clearInterventionsSearch()" style="margin-top: 10px;">
-                <i class="bi bi-x-circle"></i> Effacer
+              <button class="btn btn-sm btn-secondary" (click)="resetFilters()" style="margin-top: 10px;">
+                <i class="bi bi-x-circle"></i> Réinitialiser les filtres
               </button>
             </td>
           </tr>
@@ -88,87 +154,88 @@
                 Non payé
               </span>
             </td>
-        <!-- Dans la section des actions -->
-<td>
-  <div class="btn-group-vertical" style="gap: 3px;">
-    <div class="btn-group" style="gap: 3px;">
-      <!-- Détails - visible pour tous -->
-      <button class="btn btn-info btn-sm" (click)="viewInterventionDetails(intervention)" title="Détails">
-        <i class="bi bi-eye"></i>
-      </button>
-      
-      <!-- PDF - visible pour tous -->
-      <button class="btn btn-danger btn-sm" (click)="exportFormulaire(intervention.id!)" title="PDF">
-        <i class="bi bi-file-pdf"></i>
-      </button>
-      
-      <!-- Actions ADMIN uniquement -->
-      <ng-container *ngIf="isAdmin">
-        <button *ngIf="intervention.statutIntervention !== 'ANNULE' && !intervention.dateOrdre" 
-                class="btn btn-primary btn-sm" 
-                (click)="openDateModal(intervention)" 
-                title="Définir date d'intervention">
-          <i class="bi bi-calendar-plus"></i>
-        </button>
-        
-        <button *ngIf="intervention.statutIntervention !== 'ANNULE' && intervention.statutIntervention !== 'TERMINE'" 
-                class="btn btn-success btn-sm" 
-                (click)="openPaymentModal(intervention)" 
-                title="Ajouter paiement">
-          <i class="bi bi-credit-card"></i>
-        </button>
-        
-        <button *ngIf="intervention.statutIntervention !== 'ANNULE'" 
-                class="btn btn-warning btn-sm" 
-                (click)="editIntervention(intervention)" 
-                title="Modifier">
-          <i class="bi bi-pencil"></i>
-        </button>
-        
-        <button *ngIf="intervention.statutIntervention === 'EN_ATTENTE' && !intervention.dateOrdre" 
-                class="btn btn-danger btn-sm" 
-                (click)="openConfirmAnnulerModal(intervention)" 
-                title="Annuler l'intervention">
-          <i class="bi bi-x-circle"></i>
-        </button>
-        
-        <button class="btn btn-danger btn-sm" (click)="openConfirmDeleteModal(intervention.id!)" title="Supprimer">
-          <i class="bi bi-trash"></i>
-        </button>
-      </ng-container>
-    </div>
-    
-    <!-- Indicateur pour USER -->
-    <div *ngIf="!isAdmin" class="text-muted" style="font-size: 0.6rem; margin-top: 3px;">
-      👁️ Consultation uniquement
-    </div>
-    
-    <!-- Messages d'information -->
-    <div *ngIf="!intervention.dateOrdre && intervention.statutIntervention !== 'ANNULE'" 
-         class="text-warning" style="font-size: 0.6rem;">
-      ⏳ Date non définie
-    </div>
-    <div *ngIf="intervention.statutIntervention === 'ANNULE'" 
-         class="text-danger" style="font-size: 0.6rem; font-weight: bold;">
-      🚫 Annulée - Actions bloquées
-    </div>
-    <div *ngIf="intervention.statutIntervention === 'CONFIRME'" 
-         class="text-info" style="font-size: 0.6rem;">
-      🔄 En cours
-    </div>
-    <div *ngIf="intervention.statutIntervention === 'TERMINE'" 
-         class="text-success" style="font-size: 0.6rem;">
-      ✅ Terminée
-    </div>
-  </div>
-</td>
+            <td>
+              <div class="btn-group-vertical" style="gap: 3px;">
+                <div class="btn-group" style="gap: 3px;">
+                  <!-- Détails - visible pour tous -->
+                  <button class="btn btn-info btn-sm" (click)="viewInterventionDetails(intervention)" title="Détails">
+                    <i class="bi bi-eye"></i>
+                  </button>
+
+                  <!-- PDF - visible pour tous -->
+                  <button class="btn btn-danger btn-sm" (click)="exportFormulaire(intervention.id!)" title="PDF">
+                    <i class="bi bi-file-pdf"></i>
+                  </button>
+
+                  <!-- Définir date - visible pour tous -->
+                  <button 
+                    *ngIf="intervention.statutIntervention !== 'ANNULE' && !intervention.dateOrdre" 
+                    class="btn btn-primary btn-sm" 
+                    (click)="openDateModal(intervention)" 
+                    title="Définir date d'intervention">
+                    <i class="bi bi-calendar-plus"></i>
+                  </button>
+
+                  <!-- Paiement - visible pour tous -->
+                  <button 
+                    *ngIf="intervention.statutIntervention === 'CONFIRME' && intervention.dateOrdre" 
+                    class="btn btn-success btn-sm" 
+                    (click)="openPaymentModal(intervention)" 
+                    title="Ajouter paiement">
+                    <i class="bi bi-credit-card"></i>
+                  </button>
+
+                  <!-- ===== ACTIONS ADMIN UNIQUEMENT ===== -->
+                  <ng-container *ngIf="isAdmin">
+                    <button 
+                      *ngIf="intervention.statutIntervention !== 'ANNULE'" 
+                      class="btn btn-warning btn-sm" 
+                      (click)="editIntervention(intervention)" 
+                      title="Modifier">
+                      <i class="bi bi-pencil"></i>
+                    </button>
+
+                    <button 
+                      *ngIf="intervention.statutIntervention === 'EN_ATTENTE' && !intervention.dateOrdre" 
+                      class="btn btn-danger btn-sm" 
+                      (click)="openConfirmAnnulerModal(intervention)" 
+                      title="Annuler l'intervention">
+                      <i class="bi bi-x-circle"></i>
+                    </button>
+
+                    <button class="btn btn-danger btn-sm" (click)="openConfirmDeleteModal(intervention.id!)" title="Supprimer">
+                      <i class="bi bi-trash"></i>
+                    </button>
+                  </ng-container>
+                </div>
+
+                <!-- Messages d'information -->
+                <div *ngIf="intervention.statutIntervention === 'EN_ATTENTE' && !intervention.dateOrdre" 
+                     class="text-secondary" style="font-size: 0.6rem;">
+                  ⏳ En attente de date
+                </div>
+                <div *ngIf="intervention.statutIntervention === 'CONFIRME' && intervention.dateOrdre" 
+                     class="text-info" style="font-size: 0.6rem;">
+                  🔄 En cours - Date: {{ intervention.dateOrdre | date:'dd/MM/yyyy' }}
+                </div>
+                <div *ngIf="intervention.statutIntervention === 'TERMINE'" 
+                     class="text-success" style="font-size: 0.6rem; font-weight: bold;">
+                  ✅ Terminée - {{ intervention.montantTotal || 0 }} DT
+                </div>
+                <div *ngIf="intervention.statutIntervention === 'ANNULE'" 
+                     class="text-danger" style="font-size: 0.6rem; font-weight: bold;">
+                  🚫 Annulée
+                </div>
+              </div>
+            </td>
           </tr>
         </tbody>
       </table>
     </div>
   </div>
 
-  <!-- ==================== MODAL FORMULAIRE ==================== -->
+  <!-- ===== MODALS ===== -->
+  <!-- Modal Form -->
   <div class="modal" *ngIf="showForm">
     <div class="modal-content modal-large">
       <div class="modal-header">
@@ -227,15 +294,15 @@
         </div>
         <div class="form-group">
           <label>Technicien</label>
-  <select class="form-control" formControlName="technicien">
-    <option value="">-- Sélectionner un technicien --</option>
-    <option *ngFor="let tech of techniciens" [value]="tech.fullName || tech.username">
-      {{ tech.fullName || tech.username }}
-    </option>
-  </select>
-  <small class="text-muted" *ngIf="techniciens.length === 0">
-    ⚠️ Aucun technicien disponible. Créez d'abord des techniciens.
-  </small>
+          <select class="form-control" formControlName="technicien">
+            <option value="">-- Sélectionner un technicien --</option>
+            <option *ngFor="let tech of techniciens" [value]="tech.fullName || tech.username">
+              {{ tech.fullName || tech.username }}
+            </option>
+          </select>
+          <small class="text-muted" *ngIf="techniciens.length === 0">
+            ⚠️ Aucun technicien disponible.
+          </small>
         </div>
 
         <div class="form-row">
@@ -245,13 +312,9 @@
           </div>
           <div class="form-group">
             <label>Date d'intervention</label>
-            <input type="datetime-local" class="form-control" formControlName="dateIntervention" 
-                   [disabled]="!isEditing">
+            <input type="datetime-local" class="form-control" formControlName="dateIntervention" [disabled]="!isEditing">
             <div *ngIf="!isEditing" class="alert alert-warning" style="padding: 5px; margin-top: 5px; font-size: 0.8rem;">
               ⏳ La date d'intervention sera définie plus tard (bouton 📅)
-            </div>
-            <div *ngIf="isEditing" class="alert alert-info" style="padding: 5px; margin-top: 5px; font-size: 0.8rem;">
-              📅 Définissez la date d'intervention si le technicien est sorti
             </div>
           </div>
         </div>
@@ -260,9 +323,6 @@
           <label>Rapport Intervention</label>
           <textarea class="form-control" formControlName="rapportIntervention" rows="4" 
                     placeholder="Rapport détaillé de l'intervention..."></textarea>
-          <div *ngIf="!isEditing" class="alert alert-info" style="padding: 5px; margin-top: 5px; font-size: 0.8rem;">
-            📝 Le rapport sera complété après l'intervention
-          </div>
         </div>
 
         <div style="display: flex; gap: 10px; justify-content: flex-end;">
@@ -279,7 +339,7 @@
     </div>
   </div>
 
-  <!-- ==================== MODAL DATE INTERVENTION ==================== -->
+  <!-- Modal Date -->
   <div class="modal" *ngIf="showDateModal">
     <div class="modal-content modal-large">
       <div class="modal-header">
@@ -292,19 +352,16 @@
         </h3>
         <button class="close" (click)="closeDateModal()">&times;</button>
       </div>
-      
       <form [formGroup]="dateForm" (ngSubmit)="saveDate()">
         <div class="form-group">
           <label>Date d'intervention *</label>
           <input type="datetime-local" class="form-control" formControlName="dateIntervention">
           <small class="text-muted">📅 Sélectionnez la date et l'heure de l'intervention</small>
         </div>
-        
         <div class="alert alert-info" style="margin: 10px 0;">
           <i class="bi bi-info-circle"></i>
           <strong>Le statut passera automatiquement à "En cours" (CONFIRMÉ)</strong>
         </div>
-
         <div style="display: flex; gap: 10px; justify-content: flex-end;">
           <button type="button" class="btn btn-secondary" (click)="closeDateModal()">Annuler</button>
           <button type="submit" class="btn btn-primary" [disabled]="dateForm.invalid">
@@ -315,14 +372,13 @@
     </div>
   </div>
 
-  <!-- ==================== MODAL PAIEMENT ==================== -->
+  <!-- Modal Paiement -->
   <div class="modal" *ngIf="showPaymentModal">
     <div class="modal-content modal-large">
       <div class="modal-header">
         <h3><i class="bi bi-credit-card"></i> Ajouter un paiement</h3>
         <button class="close" (click)="closePaymentModal()">&times;</button>
       </div>
-      
       <div class="payment-summary" *ngIf="selectedIntervention">
         <div class="payment-stat">
           <span class="label">Total payé</span>
@@ -333,7 +389,6 @@
           <span class="value text-danger">{{ getMontantRestant(selectedIntervention) }} DT</span>
         </div>
       </div>
-      
       <form [formGroup]="paymentForm" (ngSubmit)="savePayment()">
         <div class="form-group">
           <label>Montant (DT) *</label>
@@ -342,7 +397,6 @@
             Reste à payer : {{ getMontantRestant(selectedIntervention) }} DT
           </small>
         </div>
-
         <div class="form-group">
           <label>Type de paiement *</label>
           <select class="form-control" formControlName="methode">
@@ -350,25 +404,21 @@
             <option *ngFor="let m of methodesPaiement" [value]="m.value">{{ m.label }}</option>
           </select>
         </div>
-
         <div class="form-group">
           <label>Notes</label>
           <textarea class="form-control" formControlName="notes" rows="2" placeholder="Informations complémentaires..."></textarea>
         </div>
-
         <div class="form-row">
           <div class="form-group">
             <label>Remise (DT)</label>
             <input type="number" class="form-control" formControlName="remise" step="0.01" min="0" placeholder="0.00">
           </div>
         </div>
-        
         <div *ngIf="paymentForm.get('remise')?.value > 0" class="form-group">
           <div class="alert alert-success">
             <i class="bi bi-tag"></i> Réduction appliquée : {{ paymentForm.get('remise')?.value }} DT
           </div>
         </div>
-
         <div style="display: flex; gap: 10px; justify-content: flex-end;">
           <button type="button" class="btn btn-secondary" (click)="closePaymentModal()">Annuler</button>
           <button type="submit" class="btn btn-success" [disabled]="paymentForm.invalid">
@@ -379,16 +429,14 @@
     </div>
   </div>
 
-  <!-- ==================== MODAL DÉTAILS ==================== -->
+  <!-- Modal Détails -->
   <div class="modal" *ngIf="showDetailsModal">
     <div class="modal-content modal-large">
       <div class="modal-header">
         <h3><i class="bi bi-tools"></i> Détails - N° {{ interventionDetails?.numeroOrdre }}</h3>
         <button class="close" (click)="closeDetailsModal()">&times;</button>
       </div>
-      
       <div *ngIf="detailsLoading" class="loading"><i class="bi bi-hourglass-split"></i> Chargement...</div>
-      
       <div *ngIf="!detailsLoading && interventionDetails" class="details-container">
         <div class="details-section">
           <h4>Informations générales</h4>
@@ -402,47 +450,52 @@
             <div class="detail-item"><label>Adresse</label><span>{{ interventionDetails.adresse || '-' }}</span></div>
           </div>
         </div>
-        
         <div class="details-section">
           <h4>Détails de l'intervention</h4>
           <div class="details-grid">
             <div class="detail-item"><label>Réclamation</label><span>{{ interventionDetails.reclamation || '-' }}</span></div>
             <div class="detail-item"><label>Technicien</label><span>{{ interventionDetails.technicien || 'Non assigné' }}</span></div>
-            <div class="detail-item"><label>Statut</label><span class="badge" [class]="getStatutInterventionClass(interventionDetails.statutIntervention)">{{ getStatutInterventionLabel(interventionDetails.statutIntervention) }}</span></div>
+            <div class="detail-item">
+              <label>Statut</label>
+              <span class="badge" [class]="getStatutInterventionClass(interventionDetails.statutIntervention)">
+                {{ getStatutInterventionLabel(interventionDetails.statutIntervention) }}
+              </span>
+            </div>
             <div class="detail-item"><label>Montant payé</label><span><strong>{{ interventionDetails.montantPaye || 0 }} DT</strong></span></div>
             <div class="detail-item"><label>Date réclamation</label><span>{{ formatDate(interventionDetails.dateReclamation) }}</span></div>
             <div class="detail-item"><label>Date intervention</label><span>{{ interventionDetails.dateOrdre ? formatDate(interventionDetails.dateOrdre) : 'Non encore définie' }}</span></div>
           </div>
         </div>
-
         <div class="details-section" *ngIf="interventionDetails.rapportIntervention">
           <h4>Rapport</h4>
           <div class="report-box"><pre class="report-pre">{{ interventionDetails.rapportIntervention }}</pre></div>
         </div>
-        
         <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
           <button class="btn btn-secondary" (click)="closeDetailsModal()">Fermer</button>
-          <button class="btn btn-danger" (click)="exportFormulaire(interventionDetails.id!); closeDetailsModal()"><i class="bi bi-file-pdf"></i> PDF</button>
-          <button *ngIf="interventionDetails.statutIntervention !== 'ANNULE'" class="btn btn-primary" (click)="editIntervention(interventionDetails); closeDetailsModal()"><i class="bi bi-pencil"></i> Modifier</button>
+          <button class="btn btn-danger" (click)="exportFormulaire(interventionDetails.id!); closeDetailsModal()">
+            <i class="bi bi-file-pdf"></i> PDF
+          </button>
+          <button 
+            *ngIf="isAdmin && interventionDetails.statutIntervention !== 'ANNULE'" 
+            class="btn btn-primary" 
+            (click)="editIntervention(interventionDetails); closeDetailsModal()">
+            <i class="bi bi-pencil"></i> Modifier
+          </button>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- ==================== MODALES D'ALERTE ==================== -->
-  
-  <!-- Modal ALERTE SUCCÈS -->
+  <!-- ===== MODALES D'ALERTE ===== -->
   <div class="modal" *ngIf="showSuccessModal">
     <div class="modal-content modal-small">
       <div class="modal-header">
-        <h3 style="color: #28a745;">
-          <i class="bi bi-check-circle-fill"></i> Succès
-        </h3>
+        <h3 style="color: #28a745;"><i class="bi bi-check-circle-fill"></i> Succès</h3>
         <button class="close" (click)="closeAlertModals()">&times;</button>
       </div>
       <div style="padding: 20px; text-align: center;">
         <i class="bi bi-check-circle-fill" style="font-size: 3rem; color: #28a745;"></i>
-        <p style="margin-top: 15px; font-size: 1.1rem;">{{ alertMessage }}</p>
+        <p style="margin-top: 15px; font-size: 1.1rem; white-space: pre-line;">{{ alertMessage }}</p>
       </div>
       <div style="display: flex; justify-content: center; padding: 15px;">
         <button class="btn btn-success" (click)="closeAlertModals()">OK</button>
@@ -450,13 +503,10 @@
     </div>
   </div>
 
-  <!-- Modal ALERTE ERREUR -->
   <div class="modal" *ngIf="showErrorModal">
     <div class="modal-content modal-small">
       <div class="modal-header">
-        <h3 style="color: #dc3545;">
-          <i class="bi bi-exclamation-triangle-fill"></i> Erreur
-        </h3>
+        <h3 style="color: #dc3545;"><i class="bi bi-exclamation-triangle-fill"></i> Erreur</h3>
         <button class="close" (click)="closeAlertModals()">&times;</button>
       </div>
       <div style="padding: 20px; text-align: center;">
@@ -469,13 +519,10 @@
     </div>
   </div>
 
-  <!-- Modal ALERTE INFO -->
   <div class="modal" *ngIf="showInfoModal">
     <div class="modal-content modal-small">
       <div class="modal-header">
-        <h3 style="color: #17a2b8;">
-          <i class="bi bi-info-circle-fill"></i> Information
-        </h3>
+        <h3 style="color: #17a2b8;"><i class="bi bi-info-circle-fill"></i> Information</h3>
         <button class="close" (click)="closeAlertModals()">&times;</button>
       </div>
       <div style="padding: 20px; text-align: center;">
@@ -488,13 +535,10 @@
     </div>
   </div>
 
-  <!-- Modal CONFIRMATION SUPPRESSION -->
   <div class="modal" *ngIf="showConfirmDeleteModal">
     <div class="modal-content modal-small">
       <div class="modal-header">
-        <h3 style="color: #dc3545;">
-          <i class="bi bi-trash-fill"></i> Confirmer la suppression
-        </h3>
+        <h3 style="color: #dc3545;"><i class="bi bi-trash-fill"></i> Confirmer la suppression</h3>
         <button class="close" (click)="closeConfirmDeleteModal()">&times;</button>
       </div>
       <div style="padding: 20px; text-align: center;">
@@ -504,32 +548,25 @@
       </div>
       <div style="display: flex; gap: 10px; justify-content: center; padding: 15px;">
         <button class="btn btn-secondary" (click)="closeConfirmDeleteModal()">Annuler</button>
-        <button class="btn btn-danger" (click)="confirmDelete()">
-          <i class="bi bi-trash"></i> Supprimer
-        </button>
+        <button class="btn btn-danger" (click)="confirmDelete()"><i class="bi bi-trash"></i> Supprimer</button>
       </div>
     </div>
   </div>
 
-  <!-- Modal CONFIRMATION ANNULATION -->
   <div class="modal" *ngIf="showConfirmAnnulerModal">
     <div class="modal-content modal-small">
       <div class="modal-header">
-        <h3 style="color: #dc3545;">
-          <i class="bi bi-x-circle-fill"></i> Confirmer l'annulation
-        </h3>
+        <h3 style="color: #dc3545;"><i class="bi bi-x-circle-fill"></i> Confirmer l'annulation</h3>
         <button class="close" (click)="closeConfirmAnnulerModal()">&times;</button>
       </div>
       <div style="padding: 20px; text-align: center;">
         <i class="bi bi-exclamation-triangle-fill" style="font-size: 3rem; color: #dc3545;"></i>
         <p style="margin-top: 15px; font-size: 1.1rem;">Êtes-vous sûr de vouloir annuler cette intervention ?</p>
-        <p style="color: #6c757d; font-size: 0.9rem;">Cette action est irréversible et bloquera toute modification ultérieure.</p>
+        <p style="color: #6c757d; font-size: 0.9rem;">Cette action est irréversible.</p>
       </div>
       <div style="display: flex; gap: 10px; justify-content: center; padding: 15px;">
-        <button class="btn btn-secondary" (click)="closeConfirmAnnulerModal()">Annuler</button>
-        <button class="btn btn-danger" (click)="confirmAnnuler()">
-          <i class="bi bi-x-circle"></i> Annuler l'intervention
-        </button>
+        <button class="btn btn-secondary" (click)="closeConfirmAnnulerModal()">Fermer</button>
+        <button class="btn btn-danger" (click)="confirmAnnuler()"><i class="bi bi-x-circle"></i> Annuler l'intervention</button>
       </div>
     </div>
   </div>

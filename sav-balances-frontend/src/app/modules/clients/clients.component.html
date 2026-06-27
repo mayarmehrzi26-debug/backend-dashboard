@@ -1,11 +1,21 @@
-<!-- src/app/modules/clients/clients.component.html -->
 <div class="clients-container">
   <div class="card">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
       <h3 class="card-title">Liste des Clients</h3>
       <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+        <!-- Boutons d'export -->
+        <div class="btn-group">
+          <button class="btn btn-success" (click)="exportClientsCSV()" title="Exporter en CSV">
+            <i class="bi bi-file-earmark-spreadsheet"></i> CSV
+          </button>
+          <button class="btn btn-danger" (click)="exportClientsPDF()" title="Exporter en PDF">
+            <i class="bi bi-file-pdf"></i> PDF
+          </button>
+        </div>
         <button class="btn btn-secondary" (click)="refresh()"><i class="bi bi-arrow-repeat"></i> Rafraîchir</button>
-        <button class="btn btn-primary" (click)="openForm()"><i class="bi bi-plus-circle"></i> Nouveau Client</button>
+        <button class="btn btn-primary" (click)="openForm()">
+          <i class="bi bi-plus-circle"></i> Nouveau Client
+        </button>
       </div>
     </div>
 
@@ -29,18 +39,20 @@
             <th>Téléphone</th>
             <th>Évaluation</th>
             <th>Paiement</th>
+            <th style="text-align: center;">Interventions</th>
+            <th style="text-align: center;">Statut Paiement</th>
             <th>Actions</th>
           </tr>
         </thead>
         <tbody>
           <tr *ngIf="loading">
-            <td colspan="6" class="loading"><i class="bi bi-hourglass-split"></i> Chargement...</td>
+            <td colspan="8" class="loading"><i class="bi bi-hourglass-split"></i> Chargement...</td>
           </tr>
           <tr *ngIf="!loading && clients.length === 0">
-            <td colspan="6" class="loading"><i class="bi bi-inbox"></i> Aucun client</td>
+            <td colspan="8" class="loading"><i class="bi bi-inbox"></i> Aucun client</td>
           </tr>
           <tr *ngIf="!loading && clients.length > 0 && filteredClients.length === 0">
-            <td colspan="6" class="loading">
+            <td colspan="8" class="loading">
               <i class="bi bi-search"></i> Aucun résultat
               <button class="btn btn-sm btn-secondary" (click)="clearSearch()" style="margin-top:10px;"><i class="bi bi-x-circle"></i> Effacer</button>
             </td>
@@ -74,11 +86,48 @@
                 <i class="bi bi-exclamation-triangle-fill"></i> {{ client.nombreAvertissements }} avertissement(s)
               </div>
             </td>
+            <td style="text-align: center;">
+              <span *ngIf="isLoadingCounts" class="badge badge-secondary" style="font-size: 0.8rem; padding: 4px 8px;">
+                <i class="bi bi-hourglass-split"></i>
+              </span>
+              <span *ngIf="!isLoadingCounts" class="badge badge-primary" style="font-size: 1rem; padding: 6px 12px;">
+                <i class="bi bi-tools"></i> {{ getClientInterventionCount(client.societe) }}
+              </span>
+            </td>
+            <td style="text-align: center;">
+              <div *ngIf="!isLoadingCounts">
+                <ng-container *ngIf="getClientInterventions(client.societe).length > 0">
+                  <span class="badge badge-success" style="font-size: 0.8rem;">
+                    <i class="bi bi-check-circle"></i> {{ getPaidInterventionsCount(client.societe) }} payé(s)
+                  </span>
+                  <span *ngIf="getUnpaidInterventionsCount(client.societe) > 0" class="badge badge-warning" style="font-size: 0.8rem; margin-left: 3px;">
+                    <i class="bi bi-clock"></i> {{ getUnpaidInterventionsCount(client.societe) }} non payé(s)
+                  </span>
+                  <span *ngIf="getUnpaidInterventionsCount(client.societe) === 0" class="badge badge-success" style="font-size: 0.7rem; margin-left: 3px;">
+                    ✅ Tout payé
+                  </span>
+                </ng-container>
+                <span *ngIf="getClientInterventions(client.societe).length === 0" class="text-muted" style="font-size: 0.7rem;">
+                  Aucune intervention
+                </span>
+              </div>
+              <span *ngIf="isLoadingCounts" class="badge badge-secondary" style="font-size: 0.7rem;">
+                <i class="bi bi-hourglass-split"></i> Chargement...
+              </span>
+            </td>
             <td>
               <button class="btn btn-info btn-sm" (click)="viewClientDetails(client, 'info')" title="Détails"><i class="bi bi-eye"></i></button>
-              <button class="btn btn-primary btn-sm" (click)="openNotesModal(client)" title="Évaluation"><i class="bi bi-star"></i></button>
-              <button class="btn btn-warning btn-sm" (click)="editClient(client)" title="Modifier"><i class="bi bi-pencil"></i></button>
-              <button class="btn btn-danger btn-sm" (click)="deleteClient(client.id!)" title="Supprimer"><i class="bi bi-trash"></i></button>
+              <button class="btn btn-primary btn-sm" (click)="viewClientDetails(client, 'interventions')" title="Voir interventions">
+                <i class="bi bi-list-task"></i>
+              </button>
+              <ng-container *ngIf="isAdmin">
+                <button class="btn btn-primary btn-sm" (click)="openNotesModal(client)" title="Évaluation"><i class="bi bi-star"></i></button>
+                <button class="btn btn-warning btn-sm" (click)="editClient(client)" title="Modifier"><i class="bi bi-pencil"></i></button>
+                <button class="btn btn-danger btn-sm" (click)="deleteClient(client.id!)" title="Supprimer"><i class="bi bi-trash"></i></button>
+              </ng-container>
+              <div *ngIf="!isAdmin" class="text-muted" style="font-size: 0.6rem; margin-top: 3px;">
+                👁️ Consultation uniquement
+              </div>
             </td>
           </tr>
         </tbody>
@@ -156,9 +205,9 @@
     </div>
   </div>
 
-  <!-- ==================== MODAL DÉTAILS CLIENT (AVEC ONGLETS) ==================== -->
+  <!-- ==================== MODAL DÉTAILS CLIENT ==================== -->
   <div class="modal" *ngIf="showDetailsModal">
-    <div class="modal-content modal-large">
+    <div class="modal-content modal-large" style="max-width: 1100px;">
       <div class="modal-header">
         <h3><i class="bi bi-person-badge"></i> Détails Client - {{ clientDetails?.societe }}</h3>
         <button class="close" (click)="closeDetailsModal()">&times;</button>
@@ -168,12 +217,25 @@
 
       <div *ngIf="!detailsLoading && clientDetails" class="details-container">
         <!-- Onglets -->
-        <div class="tabs">
-          <button class="tab-btn" [class.active]="selectedTab === 'info'" (click)="selectedTab='info'">
+        <div class="tabs" style="display: flex; gap: 5px; border-bottom: 2px solid #e9ecef; margin-bottom: 20px;">
+          <button class="tab-btn" [class.active]="selectedTab === 'info'" (click)="selectedTab='info'" 
+                  style="padding: 10px 20px; border: none; background: none; cursor: pointer; font-weight: 500; border-radius: 8px 8px 0 0; transition: all 0.3s;">
             <i class="bi bi-info-circle"></i> Informations
           </button>
-          <button class="tab-btn" [class.active]="selectedTab === 'wallet'" (click)="selectedTab='wallet'; loadClientTransactions(clientDetails.id!)">
+          <button class="tab-btn" [class.active]="selectedTab === 'interventions'" (click)="selectedTab='interventions'"
+                  style="padding: 10px 20px; border: none; background: none; cursor: pointer; font-weight: 500; border-radius: 8px 8px 0 0; transition: all 0.3s;">
+            <i class="bi bi-tools"></i> Interventions 
+            <span class="badge badge-primary" style="font-size: 0.7rem;">{{ clientInterventions.length }}</span>
+          </button>
+          <button *ngIf="isAdmin" class="tab-btn" [class.active]="selectedTab === 'wallet'" 
+                  (click)="selectedTab='wallet'; loadClientTransactions(clientDetails.id!, true)"
+                  style="padding: 10px 20px; border: none; background: none; cursor: pointer; font-weight: 500; border-radius: 8px 8px 0 0; transition: all 0.3s;">
             <i class="bi bi-wallet2"></i> Portefeuille
+          </button>
+          <button *ngIf="!isAdmin" class="tab-btn" [class.active]="selectedTab === 'wallet'" 
+                  (click)="selectedTab='wallet'; loadClientTransactions(clientDetails.id!, false)"
+                  style="padding: 10px 20px; border: none; background: none; cursor: pointer; font-weight: 500; border-radius: 8px 8px 0 0; transition: all 0.3s;">
+            <i class="bi bi-wallet2"></i> 3 dernières transactions
           </button>
         </div>
 
@@ -181,20 +243,35 @@
         <div *ngIf="selectedTab === 'info'">
           <div class="details-section">
             <h4><i class="bi bi-building"></i> Informations générales</h4>
-            <div class="details-grid">
-              <div class="detail-item"><label>Société</label><span>{{ clientDetails.societe || '-' }}</span></div>
-              <div class="detail-item"><label>Responsable</label><span>{{ clientDetails.responsable || '-' }}</span></div>
-              <div class="detail-item"><label>Téléphone</label><span>{{ clientDetails.telephone || '-' }}</span></div>
-              <div class="detail-item"><label>Email</label><span>{{ clientDetails.email || '-' }}</span></div>
-              <div class="detail-item"><label>Adresse</label><span>{{ clientDetails.adresse || '-' }}</span></div>
+            <div class="details-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+              <div class="detail-item" style="background: #f8f9fa; padding: 10px; border-radius: 8px;">
+                <label style="font-weight: bold; color: #0d3e23; display: block; font-size: 0.8rem;">Société</label>
+                <span>{{ clientDetails.societe || '-' }}</span>
+              </div>
+              <div class="detail-item" style="background: #f8f9fa; padding: 10px; border-radius: 8px;">
+                <label style="font-weight: bold; color: #0d3e23; display: block; font-size: 0.8rem;">Responsable</label>
+                <span>{{ clientDetails.responsable || '-' }}</span>
+              </div>
+              <div class="detail-item" style="background: #f8f9fa; padding: 10px; border-radius: 8px;">
+                <label style="font-weight: bold; color: #0d3e23; display: block; font-size: 0.8rem;">Téléphone</label>
+                <span>{{ clientDetails.telephone || '-' }}</span>
+              </div>
+              <div class="detail-item" style="background: #f8f9fa; padding: 10px; border-radius: 8px;">
+                <label style="font-weight: bold; color: #0d3e23; display: block; font-size: 0.8rem;">Email</label>
+                <span>{{ clientDetails.email || '-' }}</span>
+              </div>
+              <div class="detail-item" style="background: #f8f9fa; padding: 10px; border-radius: 8px; grid-column: span 2;">
+                <label style="font-weight: bold; color: #0d3e23; display: block; font-size: 0.8rem;">Adresse</label>
+                <span>{{ clientDetails.adresse || '-' }}</span>
+              </div>
             </div>
           </div>
 
           <div class="details-section">
             <h4><i class="bi bi-star-fill"></i> Évaluation</h4>
-            <div class="details-grid">
-              <div class="detail-item">
-                <label>Comportement</label>
+            <div class="details-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+              <div class="detail-item" style="background: #f8f9fa; padding: 10px; border-radius: 8px;">
+                <label style="font-weight: bold; color: #0d3e23; display: block; font-size: 0.8rem;">Comportement</label>
                 <span>
                   <span *ngIf="!clientDetails.comportement" class="badge badge-secondary"><i class="bi bi-question-circle"></i> Non évalué</span>
                   <span *ngIf="clientDetails.comportement" class="badge" [class]="'badge-' + getComportementColor(clientDetails.comportement)">
@@ -202,18 +279,18 @@
                   </span>
                 </span>
               </div>
-              <div class="detail-item">
-                <label>Note</label>
+              <div class="detail-item" style="background: #f8f9fa; padding: 10px; border-radius: 8px;">
+                <label style="font-weight: bold; color: #0d3e23; display: block; font-size: 0.8rem;">Note</label>
                 <span>
                   <span *ngIf="clientDetails.note" class="stars-detail">
-                    <i class="bi-star-fill star-active" *ngFor="let s of [1,2,3,4,5] let i = index" [class.star-active]="i < (clientDetails.note || 0)"></i>
+                    <i class="bi-star-fill star-active" *ngFor="let s of [1,2,3,4,5] let i = index" [class.star-active]="i < (clientDetails.note || 0)" style="color: #ffc107;"></i>
                     ({{ clientDetails.note }}/5)
                   </span>
                   <span *ngIf="!clientDetails.note">Non noté</span>
                 </span>
               </div>
-              <div class="detail-item">
-                <label>Statut paiement</label>
+              <div class="detail-item" style="background: #f8f9fa; padding: 10px; border-radius: 8px;">
+                <label style="font-weight: bold; color: #0d3e23; display: block; font-size: 0.8rem;">Statut paiement</label>
                 <span>
                   <span *ngIf="!clientDetails.statutPaiement" class="badge badge-secondary">Non renseigné</span>
                   <span *ngIf="clientDetails.statutPaiement" class="badge" [class]="'badge-' + getPaiementColor(clientDetails.statutPaiement)">
@@ -221,16 +298,16 @@
                   </span>
                 </span>
               </div>
-              <div class="detail-item">
-                <label>Tags</label>
+              <div class="detail-item" style="background: #f8f9fa; padding: 10px; border-radius: 8px;">
+                <label style="font-weight: bold; color: #0d3e23; display: block; font-size: 0.8rem;">Tags</label>
                 <span>
                   <span *ngIf="clientDetails.negociateur" class="tag tag-info"><i class="bi bi-calculator"></i> Négociateur</span>
                   <span *ngIf="clientDetails.clientFidele" class="tag tag-success"><i class="bi bi-heart-fill"></i> Fidèle</span>
                   <span *ngIf="!clientDetails.negociateur && !clientDetails.clientFidele">Aucun tag</span>
                 </span>
               </div>
-              <div class="detail-item">
-                <label>Avertissements</label>
+              <div class="detail-item" style="background: #f8f9fa; padding: 10px; border-radius: 8px;">
+                <label style="font-weight: bold; color: #0d3e23; display: block; font-size: 0.8rem;">Avertissements</label>
                 <span>
                   <span *ngIf="clientDetails.nombreAvertissements && clientDetails.nombreAvertissements > 0" class="warning-count">
                     <i class="bi bi-exclamation-triangle-fill"></i> {{ clientDetails.nombreAvertissements }} avertissement(s)
@@ -238,8 +315,8 @@
                   <span *ngIf="!clientDetails.nombreAvertissements || clientDetails.nombreAvertissements === 0">✅ Aucun avertissement</span>
                 </span>
               </div>
-              <div class="detail-item">
-                <label>Dernier contact</label>
+              <div class="detail-item" style="background: #f8f9fa; padding: 10px; border-radius: 8px;">
+                <label style="font-weight: bold; color: #0d3e23; display: block; font-size: 0.8rem;">Dernier contact</label>
                 <span>{{ clientDetails.dernierContact ? (clientDetails.dernierContact | date:'dd/MM/yyyy HH:mm') : 'Non renseigné' }}</span>
               </div>
             </div>
@@ -247,36 +324,108 @@
 
           <div class="details-section">
             <h4><i class="bi bi-chat-text"></i> Notes personnalisées</h4>
-            <div class="notes-box">
-              <p *ngIf="clientDetails.notes; else noNotes">{{ clientDetails.notes }}</p>
-              <ng-template #noNotes><p class="text-muted">Aucune note</p></ng-template>
+            <div class="notes-box" style="background: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 4px solid #0d3e23;">
+              <p *ngIf="clientDetails.notes; else noNotes" style="margin: 0;">{{ clientDetails.notes }}</p>
+              <ng-template #noNotes><p class="text-muted" style="margin: 0;">Aucune note</p></ng-template>
             </div>
           </div>
 
           <div *ngIf="clientDetails.historiqueNotes" class="details-section">
             <h4><i class="bi bi-clock-history"></i> Historique</h4>
-            <div class="history-box"><pre class="history-pre">{{ clientDetails.historiqueNotes }}</pre></div>
+            <div class="history-box" style="background: #f8f9fa; padding: 15px; border-radius: 8px; max-height: 150px; overflow-y: auto;">
+              <pre class="history-pre" style="margin: 0; white-space: pre-wrap; font-size: 0.9rem;">{{ clientDetails.historiqueNotes }}</pre>
+            </div>
           </div>
         </div>
 
-        <!-- ===== ONGLET PORTEFEUILLE ===== -->
-        <div *ngIf="selectedTab === 'wallet'">
-          <div class="wallet-summary">
-            <div class="wallet-stat">
-              <span class="label">Total payé</span>
-              <span class="value">{{ totalPaye | number:'1.2-2' }} DT</span>
+        <!-- ===== ONGLET INTERVENTIONS ===== -->
+        <div *ngIf="selectedTab === 'interventions'">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <h4 style="margin: 0;"><i class="bi bi-tools"></i> Interventions de {{ clientDetails?.societe }}</h4>
+            <span class="badge badge-primary" style="font-size: 1rem; padding: 5px 15px;">
+              Total : {{ clientInterventions.length }}
+            </span>
+          </div>
+
+          <div *ngIf="clientInterventionsLoading" class="loading">
+            <i class="bi bi-hourglass-split"></i> Chargement des interventions...
+          </div>
+
+          <div *ngIf="!clientInterventionsLoading && clientInterventions.length === 0" class="no-data" style="text-align: center; padding: 40px; background: #f8f9fa; border-radius: 8px;">
+            <i class="bi bi-inbox" style="font-size: 3rem; color: #6c757d;"></i>
+            <p style="margin-top: 15px; color: #6c757d;">Aucune intervention pour ce client</p>
+          </div>
+
+          <div *ngIf="!clientInterventionsLoading && clientInterventions.length > 0" class="table-container" style="max-height: 500px; overflow-y: auto;">
+            <table class="table table-striped table-hover" style="font-size: 0.9rem;">
+              <thead style="position: sticky; top: 0; background: #0d3e23; color: white; z-index: 10;">
+                <tr>
+                  <th style="padding: 10px;">N° Ordre</th>
+                  <th style="padding: 10px;">Type</th>
+                  <th style="padding: 10px;">Équipement</th>
+                  <th style="padding: 10px;">Statut Intervention</th>
+                  <th style="padding: 10px;">Statut Paiement</th>
+                  <th style="padding: 10px;">Date</th>
+                  <th style="padding: 10px; text-align: right;">Montant</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let interv of clientInterventions" style="transition: background 0.2s;">
+                  <td style="padding: 10px;"><strong>{{ interv.numeroOrdre }}</strong></td>
+                  <td style="padding: 10px;">
+                    <span class="badge" [class.badge-primary]="interv.type === 'INTERNE'" 
+                         [class.badge-info]="interv.type === 'EXTERNE'">
+                      {{ interv.type === 'INTERNE' ? '🏠 Interne' : '🌍 Externe' }}
+                    </span>
+                  </td>
+                  <td style="padding: 10px;">{{ interv.bascule || '-' }}</td>
+                  <td style="padding: 10px;">
+                    <span class="badge" [class]="getStatutInterventionClass(interv.statutIntervention)" style="font-size: 0.8rem;">
+                      {{ getStatutInterventionLabel(interv.statutIntervention) }}
+                    </span>
+                  </td>
+                  <td style="padding: 10px;">
+                    <span class="badge" [class]="interv.statutPaiement === 'PAYE' || (interv.montantTotal > 0 && interv.montantPaye >= interv.montantTotal) ? 'badge-success' : 'badge-warning'">
+                      {{ interv.statutPaiement === 'PAYE' || (interv.montantTotal > 0 && interv.montantPaye >= interv.montantTotal) ? '✅ Payé' : '⏳ Non payé' }}
+                    </span>
+                    <div *ngIf="interv.montantTotal > 0" style="font-size: 0.7rem; color: #666;">
+                      {{ (interv.montantPaye || 0) }} / {{ interv.montantTotal }} DT
+                    </div>
+                  </td>
+                  <td style="padding: 10px;">{{ interv.dateReclamation | date:'dd/MM/yyyy' }}</td>
+                  <td style="padding: 10px; text-align: right;">
+                    <span *ngIf="interv.montantTotal > 0" style="font-weight: bold; color: #0d3e23;">
+                      {{ interv.montantTotal }} DT
+                    </span>
+                    <span *ngIf="!interv.montantTotal || interv.montantTotal === 0" style="color: #6c757d;">-</span>
+                  </td>
+                  <td style="padding: 10px; text-align: center;">
+                 
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- ===== ONGLET PORTEFEUILLE ADMIN ===== -->
+        <div *ngIf="selectedTab === 'wallet' && isAdmin">
+          <div class="wallet-summary" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-bottom: 20px;">
+            <div class="wallet-stat" style="background: #f8f9fa; padding: 15px; border-radius: 8px; text-align: center;">
+              <span class="label" style="display: block; font-size: 0.8rem; color: #6c757d;">Total payé</span>
+              <span class="value" style="font-size: 1.5rem; font-weight: bold; color: #28a745;">{{ totalPaye | number:'1.2-2' }} DT</span>
             </div>
-            <div class="wallet-stat">
-              <span class="label">Nombre de paiements</span>
-              <span class="value">{{ nombreTransactions }}</span>
+            <div class="wallet-stat" style="background: #f8f9fa; padding: 15px; border-radius: 8px; text-align: center;">
+              <span class="label" style="display: block; font-size: 0.8rem; color: #6c757d;">Nombre de paiements</span>
+              <span class="value" style="font-size: 1.5rem; font-weight: bold; color: #0d3e23;">{{ nombreTransactions }}</span>
             </div>
-            <div class="wallet-stat">
-              <span class="label">Dernier paiement</span>
-              <span class="value">{{ getDerniereTransactionDate() }}</span>
+            <div class="wallet-stat" style="background: #f8f9fa; padding: 15px; border-radius: 8px; text-align: center;">
+              <span class="label" style="display: block; font-size: 0.8rem; color: #6c757d;">Dernier paiement</span>
+              <span class="value" style="font-size: 1rem; font-weight: bold; color: #0d3e23;">{{ getDerniereTransactionDate() }}</span>
             </div>
-            <div class="wallet-stat">
-              <span class="label">Montant moyen</span>
-              <span class="value">{{ montantMoyen | number:'1.2-2' }} DT</span>
+            <div class="wallet-stat" style="background: #f8f9fa; padding: 15px; border-radius: 8px; text-align: center;">
+              <span class="label" style="display: block; font-size: 0.8rem; color: #6c757d;">Montant moyen</span>
+              <span class="value" style="font-size: 1.5rem; font-weight: bold; color: #17a2b8;">{{ montantMoyen | number:'1.2-2' }} DT</span>
             </div>
           </div>
 
@@ -284,39 +433,44 @@
             <i class="bi bi-hourglass-split"></i> Chargement...
           </div>
 
-          <div *ngIf="!walletLoading && transactions.length === 0" class="no-data">
-            <i class="bi bi-inbox"></i> Aucune transaction
+          <div *ngIf="!walletLoading && transactions.length === 0" class="no-data" style="text-align: center; padding: 40px; background: #f8f9fa; border-radius: 8px;">
+            <i class="bi bi-inbox" style="font-size: 3rem; color: #6c757d;"></i>
+            <p style="margin-top: 15px; color: #6c757d;">Aucune transaction</p>
           </div>
 
-          <div *ngIf="!walletLoading && transactions.length > 0" class="table-container">
-            <table class="table table-sm">
-              <thead>
+          <div *ngIf="!walletLoading && transactions.length > 0" class="table-container" style="max-height: 400px; overflow-y: auto;">
+            <table class="table table-striped table-hover" style="font-size: 0.9rem;">
+              <thead style="position: sticky; top: 0; background: #0d3e23; color: white; z-index: 10;">
                 <tr>
-                  <th>Date</th>
-                  <th>Intervention</th>
-                  <th>Montant</th>
-                  <th>Réduction</th>
-                  <th>Net payé</th>
-                  <th>Méthode</th>
-                  <th>Statut</th>
+                  <th style="padding: 10px;">Date</th>
+                  <th style="padding: 10px;">Intervention</th>
+                  <th style="padding: 10px; text-align: right;">Montant</th>
+                  <th style="padding: 10px; text-align: right;">Réduction</th>
+                  <th style="padding: 10px; text-align: right;">Net payé</th>
+                  <th style="padding: 10px;">Méthode</th>
+                  <th style="padding: 10px;">Statut</th>
                 </tr>
               </thead>
               <tbody>
                 <tr *ngFor="let tx of transactions">
-                  <td>{{ tx.dateTransaction | date:'dd/MM/yyyy HH:mm' }}</td>
-                  <td>#{{ tx.interventionId || '-' }}</td>
-                  <td>{{ tx.montant }} DT</td>
-                  <td>
+                  <td style="padding: 10px;">{{ tx.dateTransaction | date:'dd/MM/yyyy HH:mm' }}</td>
+                  <td style="padding: 10px;">
+                    <strong>{{ tx.numeroOrdreIntervention || ('#' + (tx.interventionId || '-')) }}</strong>
+                  </td>
+                  <td style="padding: 10px; text-align: right;">{{ tx.montant }} DT</td>
+                  <td style="padding: 10px; text-align: right;">
                     <span *ngIf="tx.remise || tx.remisePourcentage">
                       {{ tx.remise ? tx.remise + ' DT' : '' }}
                       {{ tx.remisePourcentage ? tx.remisePourcentage + '%' : '' }}
-                      <span *ngIf="tx.promoCode">({{ tx.promoCode }})</span>
+                      <span *ngIf="tx.promoCode" class="badge badge-info" style="font-size: 0.7rem;">{{ tx.promoCode }}</span>
                     </span>
                     <span *ngIf="!tx.remise && !tx.remisePourcentage">-</span>
                   </td>
-                  <td><strong>{{ tx.montant - (tx.remise || 0) }} DT</strong></td>
-                  <td>{{ tx.methode }}</td>
-                  <td>
+                  <td style="padding: 10px; text-align: right;"><strong>{{ tx.montant - (tx.remise || 0) }} DT</strong></td>
+                  <td style="padding: 10px;">
+                    <span class="badge badge-secondary">{{ tx.methode }}</span>
+                  </td>
+                  <td style="padding: 10px;">
                     <span class="badge" 
                           [class.badge-success]="tx.statut === 'VALIDE'" 
                           [class.badge-warning]="tx.statut === 'EN_ATTENTE'" 
@@ -330,9 +484,64 @@
           </div>
         </div>
 
-        <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:20px;">
+        <!-- ===== ONGLET PORTEFEUILLE USER (3 dernières transactions) ===== -->
+        <div *ngIf="selectedTab === 'wallet' && !isAdmin">
+          <div style="margin-bottom: 15px;">
+            <h4 style="margin: 0; color: #0d3e23;">
+              <i class="bi bi-clock-history"></i> 3 dernières transactions
+            </h4>
+            <p class="text-muted" style="font-size: 0.8rem; margin-top: 5px;">
+              Les transactions sont présentées par ordre chronologique inverse
+            </p>
+          </div>
+
+          <div *ngIf="walletLoading" class="loading">
+            <i class="bi bi-hourglass-split"></i> Chargement...
+          </div>
+
+          <div *ngIf="!walletLoading && transactionsLimited.length === 0" class="no-data" style="text-align: center; padding: 40px; background: #f8f9fa; border-radius: 8px;">
+            <i class="bi bi-inbox" style="font-size: 3rem; color: #6c757d;"></i>
+            <p style="margin-top: 15px; color: #6c757d;">Aucune transaction</p>
+          </div>
+
+          <div *ngIf="!walletLoading && transactionsLimited.length > 0" class="table-container" style="max-height: 400px; overflow-y: auto;">
+            <table class="table table-striped table-hover" style="font-size: 0.9rem;">
+              <thead style="position: sticky; top: 0; background: #0d3e23; color: white; z-index: 10;">
+                <tr>
+                  <th style="padding: 10px;">Date</th>
+                  <th style="padding: 10px;">Intervention</th>
+                  <th style="padding: 10px; text-align: right;">Montant</th>
+                  <th style="padding: 10px;">Méthode</th>
+                  <th style="padding: 10px;">Statut</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let tx of transactionsLimited">
+                  <td style="padding: 10px;">{{ tx.dateTransaction | date:'dd/MM/yyyy HH:mm' }}</td>
+                  <td style="padding: 10px;">
+                    <strong>{{ tx.numeroOrdreIntervention || ('#' + (tx.interventionId || '-')) }}</strong>
+                  </td>
+                  <td style="padding: 10px; text-align: right;"><strong>{{ tx.montant }} DT</strong></td>
+                  <td style="padding: 10px;">
+                    <span class="badge badge-secondary">{{ tx.methode }}</span>
+                  </td>
+                  <td style="padding: 10px;">
+                    <span class="badge" 
+                          [class.badge-success]="tx.statut === 'VALIDE'" 
+                          [class.badge-warning]="tx.statut === 'EN_ATTENTE'" 
+                          [class.badge-danger]="tx.statut === 'ANNULE'">
+                      {{ tx.statut === 'VALIDE' ? '✅ Validé' : tx.statut === 'EN_ATTENTE' ? '⏳ En attente' : '❌ Annulé' }}
+                    </span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:20px; padding-top: 15px; border-top: 1px solid #e9ecef;">
           <button class="btn btn-secondary" (click)="closeDetailsModal()">Fermer</button>
-          <button class="btn btn-primary" (click)="editClient(clientDetails); closeDetailsModal()">
+          <button *ngIf="isAdmin" class="btn btn-primary" (click)="editClient(clientDetails); closeDetailsModal()">
             <i class="bi bi-pencil"></i> Modifier
           </button>
         </div>

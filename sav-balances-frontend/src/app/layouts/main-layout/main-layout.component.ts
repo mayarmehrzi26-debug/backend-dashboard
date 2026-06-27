@@ -28,7 +28,10 @@ export class MainLayoutComponent implements OnInit {
     '/app/balances': '⚖️ Gestion des Balances',
     '/app/prestations': '🏷️ Gestion des Prestations',
     '/app/users': '👥 Gestion des Utilisateurs',
+    '/app/rappels': '📋 Rappels de Poinçonnage',
+
         '/app/profile': '👥 Gestion du Profile'
+
 
     
   };

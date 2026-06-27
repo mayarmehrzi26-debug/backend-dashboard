@@ -1289,3 +1289,166 @@ textarea.form-control {
   font-size: 0.8rem;
   vertical-align: middle;
 }
+/* ===== FILTRES ===== */
+.filters-container {
+  background: #f8f9fa;
+  padding: 15px 20px;
+  border-radius: 10px;
+  margin-bottom: 20px;
+  border: 1px solid #e9ecef;
+}
+
+.payment-filters {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.filter-label {
+  font-weight: 600;
+  color: #0d3e23;
+  font-size: 0.9rem;
+  margin-right: 5px;
+}
+
+.filter-buttons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.filter-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border: 2px solid #e9ecef;
+  border-radius: 20px;
+  background: white;
+  color: #495057;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.filter-btn:hover {
+  border-color: #0d3e23;
+  background: #f0f7f2;
+  transform: translateY(-1px);
+}
+
+.filter-btn .badge {
+  background: #e9ecef;
+  color: #495057;
+  padding: 1px 8px;
+  border-radius: 12px;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.filter-btn.active {
+  border-color: #0d3e23;
+  background: #0d3e23;
+  color: white;
+  box-shadow: 0 2px 8px rgba(13, 62, 35, 0.2);
+}
+
+.filter-btn.active .badge {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+}
+
+.filter-btn.filter-paye.active {
+  border-color: #28a745;
+  background: #28a745;
+}
+
+.filter-btn.filter-partiel.active {
+  border-color: #ffc107;
+  background: #ffc107;
+  color: #212529;
+}
+
+.filter-btn.filter-partiel.active .badge {
+  background: rgba(0, 0, 0, 0.1);
+  color: #212529;
+}
+
+.filter-btn.filter-nonpaye.active {
+  border-color: #dc3545;
+  background: #dc3545;
+}
+
+/* ===== STATUT PAIEMENT ===== */
+.payment-status-indicator {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.payment-progress-mini {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.progress-track {
+  flex: 1;
+  height: 4px;
+  background: #e9ecef;
+  border-radius: 2px;
+  overflow: hidden;
+  min-width: 50px;
+}
+
+.progress-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.5s ease;
+  background: #6c757d;
+}
+
+.progress-fill.paid {
+  background: #28a745;
+}
+
+.progress-fill.partial {
+  background: #ffc107;
+}
+
+.progress-fill.unpaid {
+  background: #dc3545;
+}
+
+.amount-info {
+  font-size: 0.7rem;
+  color: #495057;
+  white-space: nowrap;
+  font-weight: 500;
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 768px) {
+  .filters-container {
+    padding: 12px 15px;
+  }
+
+  .payment-filters {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .filter-buttons {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .filter-btn {
+    font-size: 0.75rem;
+    padding: 4px 10px;
+  }
+}

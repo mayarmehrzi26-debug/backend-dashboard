@@ -1,6 +1,6 @@
 // src/app/core/services/api.service.ts
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient,HttpParams  } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { Transaction, StatutPaiement } from '../../models/transaction.model';
@@ -75,6 +75,8 @@ export interface TransactionClient {
   remise?: number;
   remisePourcentage?: number;
   promoCode?: string;
+    numeroOrdreIntervention?: string;   // ✅ AJOUT
+
 }
 
 @Injectable({
@@ -201,4 +203,34 @@ export class ApiService {
   refreshIntervention(id: number): Observable<Intervention> {
     return this.http.post<Intervention>(`${this.apiUrl}/interventions/${id}/refresh`, {});
 }
+getInterventionsByClient(societe: string): Observable<any[]> {
+  return this.http.get<any[]>(`${this.apiUrl}/interventions/client/${encodeURIComponent(societe)}`);
+}
+ajouterPaiementAuto(interventionId: number): Observable<any> {
+  return this.http.post<any>(`${this.apiUrl}/transactions/intervention/${interventionId}/auto`, {});
+}
+  /**
+   * Met à jour la date d'intervention avec paiement automatique
+   * Utilise HttpParams pour éviter les problèmes de Content-Type
+   */
+  updateInterventionDate(interventionId: number, dateOrdre: string): Observable<Intervention> {
+    const params = new HttpParams().set('dateOrdre', dateOrdre);
+    
+    return this.http.post<Intervention>(
+      `${this.apiUrl}/transactions/intervention/${interventionId}/date`,
+      null,
+      { params }
+    );
+  }
+
+  /**
+   * Met à jour le prix estimé d'une intervention
+   */
+  updateInterventionPrix(interventionId: number, prixEstime: number): Observable<Intervention> {
+    return this.http.post<Intervention>(
+      `${this.apiUrl}/interventions/${interventionId}/prix`,
+      prixEstime
+    );
+  }
+
 }

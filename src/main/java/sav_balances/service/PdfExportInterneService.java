@@ -18,7 +18,57 @@ public class PdfExportInterneService {
     private static final Color COLOR_BG_SECTION = new Color(235, 245, 238);
     private static final Color COLOR_LIGHT_BG = new Color(250, 252, 250);
 
-    // Classe interne utilitaire robuste pour dessiner les lignes pointillées
+    // ===== POLICES SUPPORTANT L'ARABE =====
+    private static BaseFont baseFont;
+    private static BaseFont arabicFont;
+    
+    static {
+        try {
+            // Essayer de charger Arial Unicode MS
+            try {
+                baseFont = BaseFont.createFont("c:/windows/fonts/arial.ttf", BaseFont.IDENTITY_H, BaseFont.EMBEDDED);
+                arabicFont = baseFont;
+                System.out.println("✅ Police Arial chargée avec succès");
+            } catch (Exception e) {
+                try {
+                    // Alternative : utiliser la police de iText
+                    baseFont = BaseFont.createFont(BaseFont.HELVETICA, BaseFont.IDENTITY_H, BaseFont.EMBEDDED);
+                    arabicFont = baseFont;
+                    System.out.println("✅ Police Helvetica chargée avec succès");
+                } catch (Exception e2) {
+                    // Fallback
+                    baseFont = BaseFont.createFont(BaseFont.HELVETICA, BaseFont.WINANSI, false);
+                    arabicFont = baseFont;
+                    System.out.println("⚠️ Fallback sur Helvetica standard");
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    // ===== FONCTIONS DE CRÉATION DE POLICES =====
+    
+    private Font createFont(float size, int style, Color color) {
+        try {
+            if (arabicFont != null) {
+                return new Font(arabicFont, size, style, color);
+            }
+            return new Font(Font.HELVETICA, size, style, color);
+        } catch (Exception e) {
+            return new Font(Font.HELVETICA, size, style, color);
+        }
+    }
+
+    private Font createFont(float size, int style) {
+        return createFont(size, style, Color.BLACK);
+    }
+
+    private Font createFont(float size) {
+        return createFont(size, Font.NORMAL);
+    }
+
+    // Classe interne utilitaire pour dessiner les lignes pointillées
     private static class DashedLineCellEvent implements PdfPCellEvent {
         @Override
         public void cellLayout(PdfPCell cell, Rectangle position, PdfContentByte[] canvases) {
@@ -36,15 +86,14 @@ public class PdfExportInterneService {
         }
     }
 
-    // ========== BON DE REÇUE (2 PARTIES) ==========
-    // ✅ AJOUT DU PARAMÈTRE dateReclamation
+    // ========== BON DE REÇUE (2 PARTIES : CLIENT & TECHNICIEN) ==========
     public byte[] generateFormulaireInternePdf(String numeroOrdre, String societe,
-                                                String equipement,
-                                                String reference,
-                                                String dateReclamation,  // ✅ NOUVEAU
-                                                String dateIntervention, // ✅ GARDÉ
-                                                String reclamation,
-                                                String rapportIntervention) {
+                                               String equipement,
+                                               String reference,
+                                               String dateReclamation,  
+                                               String dateIntervention, 
+                                               String reclamation,
+                                               String rapportIntervention) {
         
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         Document document = new Document(PageSize.A4);
@@ -54,14 +103,16 @@ public class PdfExportInterneService {
             PdfWriter writer = PdfWriter.getInstance(document, baos);
             document.open();
             
-            Font companyFont = new Font(Font.HELVETICA, 14, Font.BOLD, COLOR_PRIMARY);
-            Font detailsHeaderFont = new Font(Font.HELVETICA, 8, Font.NORMAL, Color.DARK_GRAY);
-            Font subTitleFont = new Font(Font.HELVETICA, 14, Font.BOLD, COLOR_SECONDARY);
-            Font labelFont = new Font(Font.HELVETICA, 10, Font.BOLD, COLOR_SECONDARY);
-            Font valueFont = new Font(Font.HELVETICA, 10, Font.NORMAL);
-            Font smallFont = new Font(Font.HELVETICA, 8, Font.NORMAL);
-            Font reclamationFont = new Font(Font.HELVETICA, 10, Font.ITALIC, Color.DARK_GRAY);
-            Font referenceFont = new Font(Font.HELVETICA, 10, Font.ITALIC, new Color(80, 80, 80));
+            // ===== CRÉATION DES POLICES =====
+            Font companyFont = createFont(14, Font.BOLD, COLOR_PRIMARY);
+            Font detailsHeaderFont = createFont(8, Font.NORMAL, Color.DARK_GRAY);
+            Font subTitleFont = createFont(14, Font.BOLD, COLOR_SECONDARY);
+            Font labelFont = createFont(10, Font.BOLD, COLOR_SECONDARY);
+            Font valueFont = createFont(10, Font.NORMAL);
+            Font smallFont = createFont(8, Font.NORMAL);
+            Font reclamationFont = createFont(10, Font.ITALIC, Color.DARK_GRAY);
+            Font referenceFont = createFont(10, Font.ITALIC, new Color(80, 80, 80));
+            Font warningFont = createFont(10, Font.BOLD, new Color(255, 0, 0));
             
             // En-tête
             PdfPTable headerTable = new PdfPTable(2);
@@ -132,10 +183,10 @@ public class PdfExportInterneService {
             headerTable.addCell(dateCell);
             document.add(headerTable);
             
-            // Titre
+            // Titre Principal
             Paragraph title = new Paragraph("ORDRE D'INTERVENTION INTERNE N° " + numeroOrdre, subTitleFont);
             title.setAlignment(Element.ALIGN_CENTER);
-            title.setSpacingBefore(8);
+            title.setSpacingBefore(5);
             title.setSpacingAfter(5);
             document.add(title);
           
@@ -150,26 +201,36 @@ public class PdfExportInterneService {
             addRow(mainTable, "Équipement :", getValue(equipement), labelFont, valueFont);
             addRow(mainTable, "N° de série :", getValue(reference), labelFont, referenceFont);
             
-            // ✅ CORRECTION : Date de réclamation
             addRow(mainTable, "Date de réclamation :", formatDate(dateReclamation), labelFont, valueFont);
-            
-            // ✅ CORRECTION : Date d'intervention
             addRow(mainTable, "Date d'intervention :", formatDate(dateIntervention), labelFont, valueFont);
-            
             addRow(mainTable, "Réclamation :", getValue(reclamation), labelFont, reclamationFont);
             
             document.add(mainTable);
             
-            // Message pour le client
-            Paragraph clientMessage = new Paragraph(
-            	    "⚠️ Tout appareil non récupéré dans les 30 jours suivant son dépôt ne sera plus sous la responsabilité du prestataire.",
-            	    new Font(Font.HELVETICA, 10, Font.BOLD, new Color(255, 0, 0)) // ROUGE
-            	);
-            	clientMessage.setAlignment(Element.ALIGN_CENTER);
-            	clientMessage.setSpacingBefore(5);
-            	clientMessage.setSpacingAfter(5);
-            	document.add(clientMessage);
-            // Ligne de découpage
+            // ===== MESSAGE D'AVERTISSEMENT EN ARABE ET FRANÇAIS =====
+            Font warningFontFrench = createFont(10, Font.BOLD, new Color(255, 0, 0));
+            Font warningFontArabic = createFont(10, Font.BOLD, new Color(255, 0, 0));
+            
+            // Message en Français
+            Paragraph frenchWarning = new Paragraph(
+                "⚠️ Au-delà de 30 jours à compter du dépôt, l'appareil n'est plus sous notre responsabilité.",
+                warningFontFrench
+            );
+            frenchWarning.setAlignment(Element.ALIGN_CENTER);
+            frenchWarning.setSpacingBefore(3);
+            frenchWarning.setSpacingAfter(2);
+            document.add(frenchWarning);
+            
+            // ===== TEXTE ARABE CORRIGÉ =====
+            String arabicText = "تنتهي مسؤوليتنا عن صيانة وحفظ الجهاز بانقضاء ثلاثين (30) يومًا ابتداءً من تاريخ إيداعه، ولا نكون ملزمين بتعويض أي ضرر يلحق به بعد ذلك.";
+            
+            Paragraph arabicWarning = new Paragraph(arabicText, warningFontArabic);
+            arabicWarning.setAlignment(Element.ALIGN_CENTER);
+            arabicWarning.setSpacingBefore(2);
+            arabicWarning.setSpacingAfter(5);
+            document.add(arabicWarning);
+
+            // Pointillés de découpage pour détacher le coupon
             Paragraph separator = new Paragraph(
                 "— — — — — — — — — — — — — — — — — — — — — — — — — — — — — — — — — — — — — — —",
                 new Font(Font.HELVETICA, 10, Font.NORMAL)
@@ -178,7 +239,7 @@ public class PdfExportInterneService {
             separator.setSpacingAfter(10);
             document.add(separator);
             
-            // ========== PARTIE INFRIEURE - POUR LE TECHNICIEN ==========
+            // ========== PARTIE INFÉRIEURE - POUR LE TECHNICIEN ==========
             PdfPTable techTable = new PdfPTable(2);
             techTable.setWidthPercentage(100);
             techTable.setWidths(new float[]{35, 65});
@@ -188,12 +249,8 @@ public class PdfExportInterneService {
             addRow(techTable, "Équipement :", getValue(equipement), labelFont, valueFont);
             addRow(techTable, "N° de série :", getValue(reference), labelFont, referenceFont);
             
-            // ✅ CORRECTION : Date de réclamation
             addRow(techTable, "Date de réclamation :", formatDate(dateReclamation), labelFont, valueFont);
-            
-            // ✅ CORRECTION : Date d'intervention
             addRow(techTable, "Date d'intervention :", formatDate(dateIntervention), labelFont, valueFont);
-            
             addRow(techTable, "Réclamation :", getValue(reclamation), labelFont, reclamationFont);
             
             document.add(techTable);
@@ -202,9 +259,9 @@ public class PdfExportInterneService {
             DashedLineCellEvent dashedEvent = new DashedLineCellEvent();
 
             // ========== ZONE RAPPORT D'INTERVENTION ==========
-            Paragraph rapportTitle = new Paragraph("📝 RAPPORT D'INTERVENTION", new Font(Font.HELVETICA, 11, Font.BOLD, COLOR_SECONDARY));
-            rapportTitle.setSpacingBefore(7);
-            rapportTitle.setSpacingAfter(5);
+            Paragraph rapportTitle = new Paragraph("📝 RAPPORT D'INTERVENTION", createFont(11, Font.BOLD, COLOR_SECONDARY));
+            rapportTitle.setSpacingBefore(4);
+            rapportTitle.setSpacingAfter(3);
             document.add(rapportTitle);
             
             PdfPTable rapportTable = new PdfPTable(1);
@@ -215,7 +272,7 @@ public class PdfExportInterneService {
             rapportCell.setBorderWidth(1.5f);
             rapportCell.setPadding(8);
             
-            for (int i = 0; i < 3; i++) {
+            for (int i = 0; i < 7; i++) {
                 PdfPTable lineTable = new PdfPTable(1);
                 lineTable.setWidthPercentage(100);
                 
@@ -233,7 +290,7 @@ public class PdfExportInterneService {
             document.add(rapportTable);
             
             // ========== ZONE NOTES ET OBSERVATIONS ==========
-            Paragraph notesTitle = new Paragraph("📝 NOTES ET OBSERVATIONS", new Font(Font.HELVETICA, 11, Font.BOLD, COLOR_SECONDARY));
+            Paragraph notesTitle = new Paragraph("📝 NOTES ET OBSERVATIONS", createFont(11, Font.BOLD, COLOR_SECONDARY));
             notesTitle.setSpacingBefore(10);
             notesTitle.setSpacingAfter(5);
             document.add(notesTitle);
@@ -246,7 +303,45 @@ public class PdfExportInterneService {
             notesCell.setBorderWidth(1.5f);
             notesCell.setPadding(8);
             
-            for (int i = 0; i < 8; i++) {
+            // Section Options
+            PdfPTable optionsSubTable = new PdfPTable(3);
+            optionsSubTable.setWidthPercentage(100);
+            optionsSubTable.setWidths(new float[]{25, 30, 45}); 
+            
+            Font zapfFont = new Font(Font.ZAPFDINGBATS, 10, Font.NORMAL, Color.DARK_GRAY);
+            Font optionFont = createFont(10, Font.BOLD, Color.DARK_GRAY);
+            
+            // Case 1 : Confirmé
+            Phrase confPhrase = new Phrase();
+            confPhrase.add(new Chunk("q", zapfFont));
+            confPhrase.add(new Chunk(" Confirmé", optionFont));
+            PdfPCell confCell = new PdfPCell(confPhrase);
+            confCell.setBorder(Rectangle.NO_BORDER);
+            confCell.setPaddingBottom(8);
+            
+            // Case 2 : Non Confirmé
+            Phrase nonConfPhrase = new Phrase();
+            nonConfPhrase.add(new Chunk("q", zapfFont));
+            nonConfPhrase.add(new Chunk(" Non confirmé", optionFont));
+            PdfPCell nonConfCell = new PdfPCell(nonConfPhrase);
+            nonConfCell.setBorder(Rectangle.NO_BORDER);
+            nonConfCell.setPaddingBottom(8);
+            
+            // Case 3 : Prix estimé
+            Paragraph pricePara = new Paragraph("💰 Prix estimé : ........................ DT", optionFont);
+            PdfPCell priceCell = new PdfPCell(pricePara);
+            priceCell.setBorder(Rectangle.NO_BORDER);
+            priceCell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+            priceCell.setPaddingBottom(8);
+            
+            optionsSubTable.addCell(confCell);
+            optionsSubTable.addCell(nonConfCell);
+            optionsSubTable.addCell(priceCell);
+            
+            notesCell.addElement(optionsSubTable);
+            
+            // Lignes pointillées
+            for (int i = 0; i < 3; i++) {
                 PdfPTable lineTable = new PdfPTable(1);
                 lineTable.setWidthPercentage(100);
                 
@@ -263,61 +358,46 @@ public class PdfExportInterneService {
             notesTable.addCell(notesCell);
             document.add(notesTable);
             
-            // ========== PETIT BOX : NOM TECHNICIEN + SIGNATURE ==========
-            Paragraph signatureTitle = new Paragraph("✅ TECHNICIEN", new Font(Font.HELVETICA, 10, Font.BOLD, COLOR_SECONDARY));
+            // ========== BOX TECHNICIEN ET SIGNATURE ==========
+            Paragraph signatureTitle = new Paragraph("✅ TECHNICIEN", createFont(10, Font.BOLD, COLOR_SECONDARY));
             signatureTitle.setSpacingBefore(10);
             signatureTitle.setSpacingAfter(5);
             document.add(signatureTitle);
             
-            // Petit tableau pour la signature
             PdfPTable signatureBoxTable = new PdfPTable(2);
             signatureBoxTable.setWidthPercentage(100);
             signatureBoxTable.setWidths(new float[]{50, 50});
-            signatureBoxTable.setSpacingBefore(3);
             
-            // Cellule gauche : Nom du technicien
             PdfPCell nameCell = new PdfPCell();
             nameCell.setBorder(Rectangle.BOX);
             nameCell.setBorderWidth(1f);
             nameCell.setPadding(8);
             nameCell.setBackgroundColor(COLOR_LIGHT_BG);
-            nameCell.setVerticalAlignment(Element.ALIGN_MIDDLE);
             
-            Paragraph nameLabel = new Paragraph("👤 Nom du technicien :", new Font(Font.HELVETICA, 9, Font.BOLD, COLOR_SECONDARY));
+            Paragraph nameLabel = new Paragraph("👤 Nom du technicien :", createFont(9, Font.BOLD, COLOR_SECONDARY));
             nameLabel.setSpacingAfter(3);
             nameCell.addElement(nameLabel);
-            
-            Paragraph nameValue = new Paragraph("_________________________", valueFont);
-            nameCell.addElement(nameValue);
-            
+            nameCell.addElement(new Paragraph("_________________________", valueFont));
             signatureBoxTable.addCell(nameCell);
             
-            // Cellule droite : Signature
             PdfPCell signCell = new PdfPCell();
             signCell.setBorder(Rectangle.BOX);
             signCell.setBorderWidth(1f);
             signCell.setPadding(8);
             signCell.setBackgroundColor(COLOR_LIGHT_BG);
-            signCell.setVerticalAlignment(Element.ALIGN_MIDDLE);
             
-            Paragraph signLabel = new Paragraph("✍️ Signature :", new Font(Font.HELVETICA, 9, Font.BOLD, COLOR_SECONDARY));
+            Paragraph signLabel = new Paragraph("✍️ Signature :", createFont(9, Font.BOLD, COLOR_SECONDARY));
             signLabel.setSpacingAfter(3);
             signCell.addElement(signLabel);
-            
-            Paragraph signValue = new Paragraph("_________________________", valueFont);
-            signCell.addElement(signValue);
-            
+            signCell.addElement(new Paragraph("_________________________", valueFont));
             signatureBoxTable.addCell(signCell);
             
             document.add(signatureBoxTable);
             
             // Footer
-            Paragraph footer = new Paragraph(
-                "Document interne - Engagement du technicien",
-                new Font(Font.HELVETICA, 7, Font.ITALIC)
-            );
+            Paragraph footer = new Paragraph("Document interne - Engagement du technicien", createFont(7, Font.ITALIC));
             footer.setAlignment(Element.ALIGN_CENTER);
-            footer.setSpacingBefore(5);
+            footer.setSpacingBefore(1);
             document.add(footer);
             
             document.close();
@@ -334,8 +414,8 @@ public class PdfExportInterneService {
                                               String equipement,
                                               String reference,
                                               Double prixPaye,
-                                              String dateReclamation,  // ✅ NOUVEAU
-                                              String dateIntervention, // ✅ GARDÉ
+                                              String dateReclamation,  
+                                              String dateIntervention, 
                                               String dateRecuperation,
                                               String reclamation) {
         
@@ -347,18 +427,17 @@ public class PdfExportInterneService {
             PdfWriter writer = PdfWriter.getInstance(document, baos);
             document.open();
             
-            // ========== MÊME EN-TÊTE QUE LE PDF D'INTERVENTION ==========
-            Font companyFont = new Font(Font.HELVETICA, 14, Font.BOLD, COLOR_PRIMARY);
-            Font detailsHeaderFont = new Font(Font.HELVETICA, 8, Font.NORMAL, Color.DARK_GRAY);
-            Font subTitleFont = new Font(Font.HELVETICA, 14, Font.BOLD, COLOR_SECONDARY);
-            Font labelFont = new Font(Font.HELVETICA, 10, Font.BOLD, COLOR_SECONDARY);
-            Font valueFont = new Font(Font.HELVETICA, 10, Font.NORMAL);
-            Font smallFont = new Font(Font.HELVETICA, 8, Font.NORMAL);
-            Font reclamationFont = new Font(Font.HELVETICA, 10, Font.ITALIC, Color.DARK_GRAY);
-            Font referenceFont = new Font(Font.HELVETICA, 10, Font.ITALIC, new Color(80, 80, 80));
-            Font bigValueFont = new Font(Font.HELVETICA, 14, Font.BOLD, COLOR_PRIMARY);
+            // ===== CRÉATION DES POLICES =====
+            Font companyFont = createFont(14, Font.BOLD, COLOR_PRIMARY);
+            Font detailsHeaderFont = createFont(8, Font.NORMAL, Color.DARK_GRAY);
+            Font subTitleFont = createFont(14, Font.BOLD, COLOR_SECONDARY);
+            Font labelFont = createFont(10, Font.BOLD, COLOR_SECONDARY);
+            Font valueFont = createFont(10, Font.NORMAL);
+            Font smallFont = createFont(8, Font.NORMAL);
+            Font reclamationFont = createFont(10, Font.ITALIC, Color.DARK_GRAY);
+            Font referenceFont = createFont(10, Font.ITALIC, new Color(80, 80, 80));
+            Font bigValueFont = createFont(14, Font.BOLD, COLOR_PRIMARY);
             
-            // En-tête identique
             PdfPTable headerTable = new PdfPTable(2);
             headerTable.setWidthPercentage(100);
             headerTable.setWidths(new float[]{75, 25});
@@ -386,7 +465,6 @@ public class PdfExportInterneService {
             
             leftSubTable.addCell(textCompanyCell);
             
-            // Logo
             PdfPCell logoCell = new PdfPCell();
             logoCell.setBorder(Rectangle.NO_BORDER);
             logoCell.setHorizontalAlignment(Element.ALIGN_LEFT);
@@ -427,14 +505,12 @@ public class PdfExportInterneService {
             headerTable.addCell(dateCell);
             document.add(headerTable);
             
-            // Titre
             Paragraph title = new Paragraph("BON DE RÉCUPÉRATION N° " + numeroOrdre, subTitleFont);
             title.setAlignment(Element.ALIGN_CENTER);
             title.setSpacingBefore(20);
             title.setSpacingAfter(12);
             document.add(title);
             
-            // ========== TABLEAU DES INFORMATIONS ==========
             PdfPTable table = new PdfPTable(2);
             table.setWidthPercentage(100);
             table.setWidths(new float[]{35, 65});
@@ -445,15 +521,10 @@ public class PdfExportInterneService {
             addRow(table, "Équipement :", getValue(equipement), labelFont, valueFont);
             addRow(table, "N° de série :", getValue(reference), labelFont, referenceFont);
             
-            // ✅ CORRECTION : Date de réclamation
             addRow(table, "Date de réclamation :", formatDate(dateReclamation), labelFont, valueFont);
-            
-            // ✅ CORRECTION : Date d'intervention
             addRow(table, "Date d'intervention :", formatDate(dateIntervention), labelFont, valueFont);
-            
             addRow(table, "Réclamation :", getValue(reclamation), labelFont, reclamationFont);
             
-            // Montant payé en gros
             PdfPCell labelCell = new PdfPCell(new Paragraph("💰 Montant payé :", labelFont));
             labelCell.setBorder(Rectangle.NO_BORDER);
             labelCell.setPadding(3);
@@ -471,34 +542,15 @@ public class PdfExportInterneService {
             
             document.add(table);
             
-            // ========== MESSAGE ==========
-            Paragraph message = new Paragraph(
-                "✅ Équipement récupéré par le client",
-                new Font(Font.HELVETICA, 10, Font.BOLD, COLOR_PRIMARY)
-            );
+            Paragraph message = new Paragraph("✅ Équipement récupéré par le client", createFont(10, Font.BOLD, COLOR_PRIMARY));
             message.setAlignment(Element.ALIGN_CENTER);
             message.setSpacingBefore(20);
             document.add(message);
             
-            // Footer (Merci pour votre confiance)
-            Paragraph footer = new Paragraph(
-                "Merci pour votre confiance !",
-                new Font(Font.HELVETICA, 10, Font.ITALIC, COLOR_PRIMARY)
-            );
+            Paragraph footer = new Paragraph("Merci pour votre confiance !", createFont(10, Font.ITALIC, COLOR_PRIMARY));
             footer.setAlignment(Element.ALIGN_CENTER);
             footer.setSpacingBefore(30);
-            footer.setSpacingAfter(10);
             document.add(footer);
-            
-            // ========== LIGNE DE DÉCOUPE AJOUTÉE ICI ==========
-            Paragraph separator = new Paragraph(
-                "— — — — — — — — — — — — — — — — — — — — — — — — — — — — — — — — — — — — — — —",
-                new Font(Font.HELVETICA, 10, Font.NORMAL, Color.GRAY)
-            );
-            separator.setAlignment(Element.ALIGN_CENTER);
-            separator.setSpacingBefore(10);
-            separator.setSpacingAfter(15);
-            document.add(separator);
             
             document.close();
             
@@ -509,10 +561,10 @@ public class PdfExportInterneService {
         return baos.toByteArray();
     }
     
-    // ========== MÉTHODES UTILITAIRES ==========
+    // ========== MÉTHODES UTILITAIRES DE MISE EN PAGE ==========
     
     private void addSectionTitle(PdfPTable table, String title, Color color, int colspan) {
-        Font titleFont = new Font(Font.HELVETICA, 12, Font.BOLD, color);
+        Font titleFont = createFont(12, Font.BOLD, color);
         Paragraph p = new Paragraph(title, titleFont);
         PdfPCell cell = new PdfPCell(p);
         cell.setBorder(Rectangle.NO_BORDER);
@@ -527,14 +579,12 @@ public class PdfExportInterneService {
         PdfPCell labelCell = new PdfPCell(new Paragraph(label, labelFont));
         labelCell.setBorder(Rectangle.NO_BORDER);
         labelCell.setPadding(3);
-        labelCell.setVerticalAlignment(Element.ALIGN_BASELINE);
         
         PdfPCell valueCell = new PdfPCell(new Paragraph(value, valueFont));
         valueCell.setBorder(Rectangle.NO_BORDER);
         valueCell.setPadding(3);
         valueCell.setBorder(Rectangle.BOTTOM);
         valueCell.setBorderWidthBottom(0.5f);
-        valueCell.setVerticalAlignment(Element.ALIGN_BASELINE);
         
         table.addCell(labelCell);
         table.addCell(valueCell);

@@ -3,41 +3,98 @@
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
       <h3 class="card-title">
         <i class="bi bi-house"></i> Interventions Internes
+        <span class="badge badge-primary" style="font-size: 0.8rem; margin-left: 10px;">
+          {{ filteredInterventions.length }}
+        </span>
       </h3>
-      <div style="display: flex; gap: 10px;">
-  <button *ngIf="isAdmin" class="btn btn-primary" (click)="openForm()">
-    <i class="bi bi-plus-circle"></i> Nouvelle Intervention Interne
-  </button>
-</div>
+      <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+        <!-- ✅ BOUTONS EXPORT -->
+        <button class="btn btn-success btn-sm" (click)="exportToCSV()" title="Exporter en CSV">
+          <i class="bi bi-file-earmark-spreadsheet"></i> CSV
+        </button>
+        <button class="btn btn-danger btn-sm" (click)="exportToPDF()" title="Exporter en PDF">
+          <i class="bi bi-file-pdf"></i> PDF
+        </button>
+        
+        <button class="btn btn-primary" (click)="openForm()">
+          <i class="bi bi-plus-circle"></i> Nouvelle Intervention
+        </button>
+      </div>
     </div>
 
-    <!-- Barre de recherche -->
-    <div class="search-container">
-      <div class="search-box">
+    <!-- ===== BARRE DE RECHERCHE ===== -->
+    <div class="search-container" style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 15px;">
+      <div class="search-box" style="flex: 1; min-width: 200px;">
         <i class="bi bi-search search-icon"></i>
         <input 
           type="text" 
           class="search-input" 
-          placeholder="Rechercher par N° Ordre, Société, Équipement, Réclamation..."
+          placeholder="Rechercher..."
           [(ngModel)]="searchInterventionsTerm"
           (input)="filterInterventions()"
           (keyup.escape)="clearInterventionsSearch()"
         />
-        <button 
-          class="search-clear" 
-          *ngIf="searchInterventionsTerm.length > 0" 
-          (click)="clearInterventionsSearch()"
-          title="Effacer la recherche"
-        >
+        <button class="search-clear" *ngIf="searchInterventionsTerm.length > 0" (click)="clearInterventionsSearch()">
           <i class="bi bi-x-circle"></i>
         </button>
-        <span class="search-count" *ngIf="!loading">
-          {{ filteredInterventions.length }} intervention{{ filteredInterventions.length > 1 ? 's' : '' }}
-          <span *ngIf="searchInterventionsTerm.length > 0">trouvée(s)</span>
+      </div>
+      <button class="btn btn-outline-primary btn-sm" (click)="toggleFilters()">
+        <i class="bi bi-funnel"></i> Filtres
+        <span class="badge badge-primary" style="font-size: 0.6rem; margin-left: 5px;" *ngIf="filterStatutIntervention !== 'tous' || filterStatutPaiement !== 'tous' || filterDateDebut || filterDateFin || filterSociete || filterTechnicien">
+          Actifs
         </span>
+      </button>
+      <button class="btn btn-outline-secondary btn-sm" (click)="resetFilters()" *ngIf="filterStatutIntervention !== 'tous' || filterStatutPaiement !== 'tous' || filterDateDebut || filterDateFin || filterSociete || filterTechnicien">
+        <i class="bi bi-x-circle"></i> Réinitialiser
+      </button>
+    </div>
+
+    <!-- ===== PANEL DES FILTRES ===== -->
+    <div class="filters-panel" *ngIf="showFilters" style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #e9ecef;">
+      <div class="row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+        <!-- Filtre Statut Intervention -->
+        <div class="form-group" style="margin-bottom: 0;">
+          <label style="font-size: 0.8rem; font-weight: bold; color: #0d3e23;">Statut Intervention</label>
+          <select class="form-control" [(ngModel)]="filterStatutIntervention" (change)="filterInterventions()" style="font-size: 0.9rem;">
+            <option *ngFor="let opt of statutInterventionOptions" [value]="opt.value">{{ opt.label }}</option>
+          </select>
+        </div>
+        
+        <!-- Filtre Statut Paiement -->
+        <div class="form-group" style="margin-bottom: 0;">
+          <label style="font-size: 0.8rem; font-weight: bold; color: #0d3e23;">Statut Paiement</label>
+          <select class="form-control" [(ngModel)]="filterStatutPaiement" (change)="filterInterventions()" style="font-size: 0.9rem;">
+            <option *ngFor="let opt of statutPaiementOptions" [value]="opt.value">{{ opt.label }}</option>
+          </select>
+        </div>
+
+        <!-- Filtre Société -->
+        <div class="form-group" style="margin-bottom: 0;">
+          <label style="font-size: 0.8rem; font-weight: bold; color: #0d3e23;">Société</label>
+          <input type="text" class="form-control" [(ngModel)]="filterSociete" (input)="filterInterventions()" placeholder="Rechercher..." style="font-size: 0.9rem;">
+        </div>
+
+        <!-- Filtre Technicien -->
+        <div class="form-group" style="margin-bottom: 0;">
+          <label style="font-size: 0.8rem; font-weight: bold; color: #0d3e23;">Technicien</label>
+          <input type="text" class="form-control" [(ngModel)]="filterTechnicien" (input)="filterInterventions()" placeholder="Rechercher..." style="font-size: 0.9rem;">
+        </div>
+
+        <!-- Filtre Date Début -->
+        <div class="form-group" style="margin-bottom: 0;">
+          <label style="font-size: 0.8rem; font-weight: bold; color: #0d3e23;">Date Début</label>
+          <input type="date" class="form-control" [(ngModel)]="filterDateDebut" (change)="filterInterventions()" style="font-size: 0.9rem;">
+        </div>
+
+        <!-- Filtre Date Fin -->
+        <div class="form-group" style="margin-bottom: 0;">
+          <label style="font-size: 0.8rem; font-weight: bold; color: #0d3e23;">Date Fin</label>
+          <input type="date" class="form-control" [(ngModel)]="filterDateFin" (change)="filterInterventions()" style="font-size: 0.9rem;">
+        </div>
       </div>
     </div>
 
+    <!-- ===== TABLEAU ===== -->
     <div class="table-container">
       <table class="table">
         <thead>
@@ -55,21 +112,17 @@
         </thead>
         <tbody>
           <tr *ngIf="loading">
-            <td colspan="9" class="loading">
-              <i class="bi bi-hourglass-split"></i> Chargement...
-            </td>
+            <td colspan="9" class="loading"><i class="bi bi-hourglass-split"></i> Chargement...</td>
           </tr>
           <tr *ngIf="!loading && interventions.length === 0">
-            <td colspan="9" class="loading">
-              <i class="bi bi-inbox"></i> Aucune intervention interne
-            </td>
+            <td colspan="9" class="loading"><i class="bi bi-inbox"></i> Aucune intervention interne</td>
           </tr>
           <tr *ngIf="!loading && interventions.length > 0 && filteredInterventions.length === 0">
             <td colspan="9" class="loading">
-              <i class="bi bi-search"></i> Aucune intervention ne correspond à votre recherche
+              <i class="bi bi-search"></i> Aucune intervention ne correspond à vos critères
               <br>
-              <button class="btn btn-sm btn-secondary" (click)="clearInterventionsSearch()" style="margin-top: 10px;">
-                <i class="bi bi-x-circle"></i> Effacer la recherche
+              <button class="btn btn-sm btn-secondary" (click)="resetFilters()" style="margin-top: 10px;">
+                <i class="bi bi-x-circle"></i> Réinitialiser les filtres
               </button>
             </td>
           </tr>
@@ -87,7 +140,7 @@
             <td>
               <div *ngIf="intervention.dateOrdre">{{ intervention.dateOrdre | date:'dd/MM/yyyy HH:mm' }}</div>
               <span *ngIf="!intervention.dateOrdre" class="badge badge-warning" style="font-size: 0.7rem;">
-                ⚠️ Non encore définie
+                ⚠️ Non définie
               </span>
             </td>
             <td>
@@ -108,90 +161,69 @@
                 <span class="total">{{ intervention.montantTotal || 0 }} DT</span>
               </div>
             </td>
-         <td>
-  <div class="btn-group-actions">
-    <!-- Détails - visible pour tous -->
-    <button class="btn btn-info btn-sm" (click)="viewInterventionDetails(intervention)" title="Voir détails">
-      <i class="bi bi-eye"></i>
-    </button>
-    
-    <!-- PDF - visible pour tous -->
-    <button class="btn btn-danger btn-sm" (click)="exportFormulaire(intervention.id!)" title="Bon de reçue PDF">
-      <i class="bi bi-file-pdf"></i>
-    </button>
-    
-    <!-- Bon de récupération - visible pour tous si TERMINE -->
-    <button *ngIf="intervention.statutIntervention === 'TERMINE'" 
-            class="btn btn-success btn-sm" 
-            (click)="exportBonRecuperation(intervention.id!)" 
-            title="Bon de récupération">
-      <i class="bi bi-box-arrow-left"></i>
-    </button>
-    
-    <!-- ===== ACTIONS ADMIN UNIQUEMENT ===== -->
-    <ng-container *ngIf="isAdmin">
-      <!-- Définir date - visible si NON annulé et pas de date -->
-      <button *ngIf="intervention.statutIntervention !== 'ANNULE' && !intervention.dateOrdre" 
-              class="btn btn-primary btn-sm" 
-              (click)="openDateModal(intervention)" 
-              title="Définir date d'intervention">
-        <i class="bi bi-calendar-plus"></i>
-      </button>
-      
-      <!-- Confirmer - visible si EN_ATTENTE -->
-      <button *ngIf="intervention.statutIntervention === 'EN_ATTENTE'" 
-              class="btn btn-primary btn-sm" 
-              (click)="openConfirmModal(intervention)" 
-              title="Confirmer (diagnostic OK)">
-        <i class="bi bi-check-circle"></i>
-      </button>
-      
-      <!-- Modifier - visible si NON annulé -->
-      <button *ngIf="intervention.statutIntervention !== 'ANNULE'" 
-              class="btn btn-warning btn-sm" 
-              (click)="editIntervention(intervention)" 
-              title="Modifier">
-        <i class="bi bi-pencil"></i>
-      </button>
-      
-      <!-- ANNULER - visible seulement si EN_ATTENTE ET pas de date -->
-      <button *ngIf="intervention.statutIntervention === 'EN_ATTENTE' && !intervention.dateOrdre" 
-              class="btn btn-danger btn-sm" 
-              (click)="annulerIntervention(intervention)" 
-              title="Annuler l'intervention">
-        <i class="bi bi-x-circle"></i>
-      </button>
-      
-      <!-- Supprimer -->
-      <button class="btn btn-danger btn-sm" (click)="deleteIntervention(intervention.id!)" title="Supprimer">
-        <i class="bi bi-trash"></i>
-      </button>
-    </ng-container>
-  </div>
-  
-  <!-- Indicateur pour USER -->
-  <div *ngIf="!isAdmin" class="text-muted" style="font-size: 0.6rem; margin-top: 3px;">
-    👁️ Consultation uniquement
-  </div>
-  
-  <!-- Messages d'information (visible pour tous) -->
-  <div *ngIf="!intervention.dateOrdre && intervention.statutIntervention !== 'ANNULE'" 
-       class="text-warning" style="font-size: 0.6rem;">
-    ⏳ Date non définie
-  </div>
-  <div *ngIf="intervention.statutIntervention === 'ANNULE'" 
-       class="text-danger" style="font-size: 0.6rem; font-weight: bold;">
-    🚫 Annulée - Actions bloquées
-  </div>
-  <div *ngIf="intervention.statutIntervention === 'CONFIRME'" 
-       class="text-info" style="font-size: 0.6rem;">
-    🔄 En cours
-  </div>
-  <div *ngIf="intervention.statutIntervention === 'TERMINE'" 
-       class="text-success" style="font-size: 0.6rem;">
-    ✅ Terminée
-  </div>
-</td>
+            <td>
+              <div class="btn-group-actions" style="display: flex; gap: 3px; flex-wrap: wrap;">
+                <button class="btn btn-info btn-sm" (click)="viewInterventionDetails(intervention)" title="Voir détails">
+                  <i class="bi bi-eye"></i>
+                </button>
+                <button class="btn btn-danger btn-sm" (click)="exportFormulaire(intervention.id!)" title="PDF">
+                  <i class="bi bi-file-pdf"></i>
+                </button>
+                <button *ngIf="intervention.statutIntervention === 'TERMINE'" 
+                        class="btn btn-success btn-sm" 
+                        (click)="exportBonRecuperation(intervention.id!)" 
+                        title="Bon de récupération">
+                  <i class="bi bi-box-arrow-left"></i>
+                </button>
+                <button *ngIf="intervention.statutIntervention === 'CONFIRME' && !intervention.dateOrdre" 
+                        class="btn btn-primary btn-sm" 
+                        (click)="openDateModal(intervention)" 
+                        title="Définir date">
+                  <i class="bi bi-calendar-plus"></i>
+                </button>
+                <ng-container *ngIf="isAdmin">
+                  <button *ngIf="intervention.statutIntervention === 'EN_ATTENTE'" 
+                          class="btn btn-primary btn-sm" 
+                          (click)="openConfirmModal(intervention)" 
+                          title="Confirmer">
+                    <i class="bi bi-check-circle"></i>
+                  </button>
+                  <button *ngIf="intervention.statutIntervention !== 'ANNULE' && intervention.statutIntervention !== 'TERMINE'" 
+                          class="btn btn-warning btn-sm" 
+                          (click)="editIntervention(intervention)" 
+                          title="Modifier">
+                    <i class="bi bi-pencil"></i>
+                  </button>
+                  <button *ngIf="intervention.statutIntervention === 'EN_ATTENTE' && !intervention.dateOrdre" 
+                          class="btn btn-danger btn-sm" 
+                          (click)="annulerIntervention(intervention)" 
+                          title="Annuler">
+                    <i class="bi bi-x-circle"></i>
+                  </button>
+                  <button class="btn btn-danger btn-sm" (click)="deleteIntervention(intervention.id!)" title="Supprimer">
+                    <i class="bi bi-trash"></i>
+                  </button>
+                </ng-container>
+              </div>
+              <div *ngIf="!isAdmin" class="text-muted" style="font-size: 0.6rem; margin-top: 3px;">
+                👁️ Consultation
+              </div>
+              <div *ngIf="intervention.statutIntervention === 'EN_ATTENTE'" class="text-secondary" style="font-size: 0.6rem;">
+                ⏳ En attente
+              </div>
+              <div *ngIf="intervention.statutIntervention === 'CONFIRME' && !intervention.dateOrdre" 
+                   class="text-info" style="font-size: 0.6rem;">
+                🔄 Confirmé - Prix: {{ intervention.prixEstime || 0 }} DT
+              </div>
+              <div *ngIf="intervention.statutIntervention === 'TERMINE'" 
+                   class="text-success" style="font-size: 0.6rem; font-weight: bold;">
+                ✅ Terminée - {{ intervention.montantTotal || 0 }} DT
+              </div>
+              <div *ngIf="intervention.statutIntervention === 'ANNULE'" 
+                   class="text-danger" style="font-size: 0.6rem; font-weight: bold;">
+                🚫 Annulée
+              </div>
+            </td>
           </tr>
         </tbody>
       </table>
@@ -284,27 +316,27 @@
           <label>Type de réclamation *</label>
           <input type="text" class="form-control" formControlName="typeReclamation" placeholder="Ex: Poinçonnage périodique">
         </div>
-<div class="form-group">
-  <label>Technicien</label>
-  <select class="form-control" formControlName="technicien">
-    <option value="">-- Sélectionner un technicien --</option>
-    <option *ngFor="let tech of techniciens" [value]="tech.fullName || tech.username">
-      {{ tech.fullName || tech.username }}
-    </option>
-  </select>
-  <small class="text-muted" *ngIf="techniciens.length === 0">
-    ⚠️ Aucun technicien disponible. Créez d'abord des techniciens.
-  </small>
-</div>
-<div class="form-group">
-  <label>📢 Type de notification</label>
-  <select class="form-control" formControlName="typeNotification">
-    <option value="PLATEFORME">🔔 Plateforme</option>
-    <option value="WHATSAPP">💬 WhatsApp</option>
-    <option value="SMS">📱 SMS</option>
-  </select>
-  <small class="text-muted">Comment notifier le technicien</small>
-</div>
+        <div class="form-group">
+          <label>Technicien</label>
+          <select class="form-control" formControlName="technicien">
+            <option value="">-- Sélectionner un technicien --</option>
+            <option *ngFor="let tech of techniciens" [value]="tech.fullName || tech.username">
+              {{ tech.fullName || tech.username }}
+            </option>
+          </select>
+          <small class="text-muted" *ngIf="techniciens.length === 0">
+            ⚠️ Aucun technicien disponible. Créez d'abord des techniciens.
+          </small>
+        </div>
+        <div class="form-group">
+          <label>📢 Type de notification</label>
+          <select class="form-control" formControlName="typeNotification">
+            <option value="PLATEFORME">🔔 Plateforme</option>
+            <option value="WHATSAPP">💬 WhatsApp</option>
+            <option value="SMS">📱 SMS</option>
+          </select>
+          <small class="text-muted">Comment notifier le technicien</small>
+        </div>
         <div class="form-row">
           <div class="form-group">
             <label>Date Réclamation *</label>
@@ -370,13 +402,13 @@
         
         <div class="alert alert-info" style="margin: 10px 0;">
           <i class="bi bi-info-circle"></i>
-          <strong>Le statut passera automatiquement à "En cours" (CONFIRMÉ)</strong>
+          <strong>L'intervention sera automatiquement terminée avec paiement automatique</strong>
         </div>
 
         <div style="display: flex; gap: 10px; justify-content: flex-end;">
           <button type="button" class="btn btn-secondary" (click)="closeDateModal()">Annuler</button>
-          <button type="submit" class="btn btn-primary" [disabled]="dateForm.invalid">
-            <i class="bi bi-save"></i> Enregistrer la date
+          <button type="submit" class="btn btn-success" [disabled]="dateForm.invalid">
+            <i class="bi bi-check-circle"></i> Terminer l'intervention
           </button>
         </div>
       </form>
@@ -399,26 +431,26 @@
       
       <form [formGroup]="confirmForm" (ngSubmit)="saveConfirmation()">
         <div class="form-group">
-          <label>Prix proposé (DT) *</label>
+          <label>💰 Prix estimé (DT) *</label>
           <input type="number" class="form-control" formControlName="prixPropose" 
                  step="0.01" placeholder="Ex: 150.00">
-          <small class="text-muted">Prix que vous proposez au client</small>
+          <small class="text-muted">Ce montant sera le prix final de l'intervention</small>
         </div>
 
         <div class="form-group">
-          <label>Date du diagnostic *</label>
+          <label>📅 Date du diagnostic *</label>
           <input type="datetime-local" class="form-control" formControlName="dateDiagnostic">
         </div>
 
         <div class="form-group">
-          <label>Notes / Diagnostic</label>
+          <label>📝 Notes / Diagnostic</label>
           <textarea class="form-control" formControlName="notes" rows="3"
                     placeholder="Résumé du diagnostic..."></textarea>
         </div>
 
         <div style="display: flex; gap: 10px; justify-content: flex-end;">
           <button type="button" class="btn btn-secondary" (click)="closeConfirmModal()">Annuler</button>
-          <button type="submit" class="btn btn-success" [disabled]="confirmForm.invalid">
+          <button type="submit" class="btn btn-primary" [disabled]="confirmForm.invalid">
             <i class="bi bi-check-circle"></i> Confirmer
           </button>
         </div>
@@ -494,8 +526,8 @@
               </span>
             </div>
             <div class="detail-item">
-              <label>Prix proposé :</label>
-              <span>{{ interventionDetails.prixPropose || '-' }} DT</span>
+              <label>Prix estimé :</label>
+              <span>{{ interventionDetails.prixEstime || interventionDetails.prixPropose || '-' }} DT</span>
             </div>
             <div class="detail-item">
               <label>Date réclamation :</label>
@@ -521,19 +553,14 @@
           
           <div class="payment-summary">
             <div class="payment-stat">
-              <span class="label">Total dû</span>
+              <span class="label">Total</span>
               <span class="value">{{ interventionDetails.montantTotal || 0 }} DT</span>
             </div>
             <div class="payment-stat">
               <span class="label">Payé</span>
               <span class="value text-success">{{ interventionDetails.montantPaye || 0 }} DT</span>
             </div>
-            <div class="payment-stat">
-              <span class="label">Reste</span>
-              <span class="value" [class.text-danger]="(interventionDetails.montantRestant || 0) > 0">
-                {{ interventionDetails.montantRestant || 0 }} DT
-              </span>
-            </div>
+            
             <div class="payment-stat">
               <span class="label">Statut</span>
               <span class="badge" [class]="getStatutClass(interventionDetails.statutPaiement)">
@@ -555,11 +582,6 @@
           <div class="payment-history">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
               <h5><i class="bi bi-clock-history"></i> Historique des paiements</h5>
-              <button *ngIf="interventionDetails.statutIntervention !== 'ANNULE'" 
-                      class="btn btn-sm btn-success" 
-                      (click)="openPaymentModal(interventionDetails)">
-                <i class="bi bi-plus-circle"></i> Ajouter
-              </button>
             </div>
             <div *ngIf="!interventionDetails.transactions || interventionDetails.transactions.length === 0" class="no-data">
               <i class="bi bi-inbox"></i> Aucun paiement enregistré
@@ -613,13 +635,13 @@
     </div>
   </div>
 
-  <!-- ==================== MODAL PAIEMENT ==================== -->
+  <!-- ==================== MODAL PAIEMENT (Cas exceptionnels) ==================== -->
   <div class="modal" *ngIf="showPaymentModal">
     <div class="modal-content modal-large">
       <div class="modal-header">
         <h3>
           <i class="bi bi-credit-card"></i>
-          Ajouter un paiement
+          Ajouter un paiement manuel
           <small style="font-size: 0.8rem; color: #6c757d; display: block;">
             Intervention #{{ selectedIntervention?.numeroOrdre }}
           </small>
@@ -629,29 +651,21 @@
       
       <div class="payment-summary" *ngIf="selectedIntervention">
         <div class="payment-stat">
-          <span class="label">Total dû</span>
+          <span class="label">Total</span>
           <span class="value">{{ selectedIntervention.montantTotal || 0 }} DT</span>
         </div>
         <div class="payment-stat">
           <span class="label">Payé</span>
           <span class="value text-success">{{ selectedIntervention.montantPaye || 0 }} DT</span>
         </div>
-        <div class="payment-stat">
-          <span class="label">Reste</span>
-          <span class="value" [class.text-danger]="(selectedIntervention.montantRestant || 0) > 0">
-            {{ selectedIntervention.montantRestant || 0 }} DT
-          </span>
-        </div>
-      </div>
+     
       
       <form [formGroup]="paymentForm" (ngSubmit)="savePayment()">
         <div class="form-group">
           <label>Montant (DT) *</label>
           <input type="number" class="form-control" formControlName="montant" 
                  step="0.01" placeholder="Ex: 100.00">
-          <small class="text-muted" *ngIf="selectedIntervention">
-            Reste à payer : {{ getMontantRestant(selectedIntervention) }} DT
-          </small>
+         
         </div>
 
         <div class="form-group">

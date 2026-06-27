@@ -6,7 +6,8 @@ import { RoleGuard } from './core/guards/role.guard';
 import { InterventionsInternesComponent } from './modules/interventions-internes/interventions-internes.component';
 import { InterventionsExternesComponent } from './modules/interventions-externes/interventions-externes.component';
 import { UsersComponent } from './modules/users/users.component';
-import { CalendrierComponent } from './modules/calendrier/calendrier.component'; // ← IMPORT
+import { CalendrierComponent } from './modules/calendrier/calendrier.component';
+import { RappelsComponent } from './modules/rappels/rappels.component'; // ← AJOUTER L'IMPORT
 
 export const routes: Routes = [
   { path: '', redirectTo: 'login', pathMatch: 'full' },
@@ -42,12 +43,11 @@ export const routes: Routes = [
         canActivate: [RoleGuard],
         data: { expectedRole: 'USER' }
       },
-      // ===== CALENDRIER INDÉPENDANT =====
       { 
         path: 'calendrier', 
         component: CalendrierComponent,
         canActivate: [RoleGuard],
-        data: { expectedRole: 'USER' }  // Accessible à USER et ADMIN
+        data: { expectedRole: 'USER' }
       },
       { 
         path: 'balances', 
@@ -64,6 +64,13 @@ export const routes: Routes = [
       { 
         path: 'profile', 
         loadComponent: () => import('./modules/profile/profile.component').then(m => m.ProfileComponent),
+        canActivate: [RoleGuard],
+        data: { expectedRole: 'USER' }
+      },
+      // ✅ CORRECTION : Chemin simplifié (sans /app/)
+      { 
+        path: 'rappels', 
+        component: RappelsComponent,
         canActivate: [RoleGuard],
         data: { expectedRole: 'USER' }
       },

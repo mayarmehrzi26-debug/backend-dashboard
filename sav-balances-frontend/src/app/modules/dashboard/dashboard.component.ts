@@ -1,6 +1,6 @@
-// src/app/modules/dashboard/dashboard.component.ts
 import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { ApiService, Intervention, Client, Balance } from '../../core/services/api.service';
 import { AuthService } from '../../core/services/auth.service';
 import { UserService } from '../../core/services/user.service';
@@ -24,6 +24,7 @@ interface InterventionDisplay {
   type?: string;
   montantTotal?: number;
   montantPaye?: number;
+  montantRestant?: number;
 }
 
 @Component({
@@ -31,7 +32,7 @@ interface InterventionDisplay {
   templateUrl: './dashboard.component.html',
   styleUrls: ['./dashboard.component.css'],
   standalone: true,
-  imports: [CommonModule]
+  imports: [CommonModule, FormsModule]
 })
 export class DashboardComponent implements OnInit, OnDestroy {
   stats = { 
@@ -41,6 +42,34 @@ export class DashboardComponent implements OnInit, OnDestroy {
     totalUsers: 0,
     totalMesInterventions: 0
   };
+
+  // ===== RENTABILITÉ =====
+  rentabilite = {
+    totalChiffreAffaire: 0,
+    totalPaye: 0,
+    totalRestant: 0,
+    tauxRecouvrement: 0,
+    nombreInterventionsPayees: 0,
+    nombreInterventionsNonPayees: 0,
+    totalInterventions: 0,
+    moyenneParIntervention: 0
+  };
+
+  // ===== FILTRES =====
+  filtres = {
+    type: 'tous',
+    statut: 'tous',
+    dateDebut: '',
+    dateFin: '',
+    societe: '',
+    technicien: '',
+    minMontant: null as number | null,
+    maxMontant: null as number | null
+  };
+  showFilters: boolean = false;
+  filteredInterventions: InterventionDisplay[] = [];
+  allInterventions: InterventionDisplay[] = [];
+
   recentInterventionsExternes: InterventionDisplay[] = [];
   recentInterventionsInternes: InterventionDisplay[] = [];
   mesInterventions: InterventionDisplay[] = [];
@@ -54,6 +83,21 @@ export class DashboardComponent implements OnInit, OnDestroy {
   isTechnicien = false;
   isUser = false;
   currentUserNom = '';
+
+  // Options de filtres
+  typeOptions = [
+    { value: 'tous', label: '📊 Tous' },
+    { value: 'INTERNE', label: '🏠 Interne' },
+    { value: 'EXTERNE', label: '🌍 Externe' }
+  ];
+
+  statutOptions = [
+    { value: 'tous', label: '📊 Tous' },
+    { value: 'EN_ATTENTE', label: '🔵 En attente' },
+    { value: 'CONFIRME', label: '🟡 En cours' },
+    { value: 'ANNULE', label: '🔴 Annulé' },
+    { value: 'TERMINE', label: '🟢 Terminé' }
+  ];
 
   // Labels des statuts
   statutLabels: {[key: string]: string} = {
@@ -83,6 +127,108 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.loadDashboard();
   }
 
+  // ==================== FILTRES ====================
+  toggleFilters() {
+    this.showFilters = !this.showFilters;
+  }
+
+  resetFilters() {
+    this.filtres = {
+      type: 'tous',
+      statut: 'tous',
+      dateDebut: '',
+      dateFin: '',
+      societe: '',
+      technicien: '',
+      minMontant: null,
+      maxMontant: null
+    };
+    this.applyFilters();
+  }
+
+  applyFilters() {
+    let filtered = [...this.allInterventions];
+    
+    // Filtre par type
+    if (this.filtres.type !== 'tous') {
+      filtered = filtered.filter(i => i.type === this.filtres.type);
+    }
+    
+    // Filtre par statut
+    if (this.filtres.statut !== 'tous') {
+      filtered = filtered.filter(i => i.statutIntervention === this.filtres.statut);
+    }
+    
+    // Filtre par société
+    if (this.filtres.societe && this.filtres.societe.trim() !== '') {
+      const societe = this.filtres.societe.toLowerCase().trim();
+      filtered = filtered.filter(i => i.societe?.toLowerCase().includes(societe));
+    }
+    
+    // Filtre par technicien
+    if (this.filtres.technicien && this.filtres.technicien.trim() !== '') {
+      const technicien = this.filtres.technicien.toLowerCase().trim();
+      filtered = filtered.filter(i => i.technicien?.toLowerCase().includes(technicien));
+    }
+    
+    // Filtre par date
+    if (this.filtres.dateDebut) {
+      const debut = new Date(this.filtres.dateDebut);
+      debut.setHours(0, 0, 0, 0);
+      filtered = filtered.filter(i => {
+        if (!i.dateReclamation) return false;
+        return new Date(i.dateReclamation) >= debut;
+      });
+    }
+    
+    if (this.filtres.dateFin) {
+      const fin = new Date(this.filtres.dateFin);
+      fin.setHours(23, 59, 59, 999);
+      filtered = filtered.filter(i => {
+        if (!i.dateReclamation) return false;
+        return new Date(i.dateReclamation) <= fin;
+      });
+    }
+    
+    // Filtre par montant
+    if (this.filtres.minMontant !== null && this.filtres.minMontant > 0) {
+      filtered = filtered.filter(i => (i.montantTotal || 0) >= this.filtres.minMontant!);
+    }
+    
+    if (this.filtres.maxMontant !== null && this.filtres.maxMontant > 0) {
+      filtered = filtered.filter(i => (i.montantTotal || 0) <= this.filtres.maxMontant!);
+    }
+    
+    this.filteredInterventions = filtered;
+    this.cdr.detectChanges();
+  }
+
+  // ==================== CALCUL DE LA RENTABILITÉ ====================
+  calculerRentabilite(interventions: InterventionDisplay[]) {
+    const total = interventions.length;
+    const payees = interventions.filter(i => 
+      (i.montantTotal || 0) > 0 && (i.montantPaye || 0) >= (i.montantTotal || 0)
+    );
+    const nonPayees = interventions.filter(i => 
+      (i.montantTotal || 0) > 0 && (i.montantPaye || 0) < (i.montantTotal || 0)
+    );
+    
+    const totalCA = interventions.reduce((sum, i) => sum + (i.montantTotal || 0), 0);
+    const totalPaye = interventions.reduce((sum, i) => sum + (i.montantPaye || 0), 0);
+    const totalRestant = totalCA - totalPaye;
+    
+    this.rentabilite = {
+      totalChiffreAffaire: totalCA,
+      totalPaye: totalPaye,
+      totalRestant: totalRestant,
+      tauxRecouvrement: totalCA > 0 ? Math.round((totalPaye / totalCA) * 100) : 0,
+      nombreInterventionsPayees: payees.length,
+      nombreInterventionsNonPayees: nonPayees.length,
+      totalInterventions: total,
+      moyenneParIntervention: total > 0 ? Math.round(totalCA / total) : 0
+    };
+  }
+
   private determinerStatut(interv: Intervention): StatutIntervention {
     let statut: StatutIntervention = 'EN_ATTENTE';
     
@@ -105,6 +251,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   private formaterIntervention(interv: Intervention): InterventionDisplay {
     const statut = this.determinerStatut(interv);
+    const montantTotal = interv.montantTotal || 0;
+    const montantPaye = interv.montantPaye || 0;
     
     return {
       id: interv.id,
@@ -118,8 +266,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
       dateOrdre: interv.dateOrdre || '',
       statutIntervention: statut,
       type: interv.type || 'INTERNE',
-      montantTotal: interv.montantTotal || 0,
-      montantPaye: interv.montantPaye || 0
+      montantTotal: montantTotal,
+      montantPaye: montantPaye,
+      montantRestant: Math.max(0, montantTotal - montantPaye)
     };
   }
 
@@ -135,8 +284,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
     try {
       const TIMEOUT_MS = 30000;
 
-      // ===== GESTION DES APPELS SELON LE RÔLE =====
-      // Clients : visible pour ADMIN et USER seulement
       let clients$ = of<Client[]>([]);
       if (this.isAdmin || this.isUser) {
         clients$ = this.apiService.getClients().pipe(
@@ -148,7 +295,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
         );
       }
 
-      // Interventions Externes : visible pour tous
       const interventionsExternes$ = this.apiService.getInterventionsByType('EXTERNE').pipe(
         timeout(TIMEOUT_MS),
         catchError((err: HttpErrorResponse) => {
@@ -157,7 +303,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
         })
       );
 
-      // Interventions Internes : visible pour tous
       const interventionsInternes$ = this.apiService.getInterventionsByType('INTERNE').pipe(
         timeout(TIMEOUT_MS),
         catchError((err: HttpErrorResponse) => {
@@ -166,7 +311,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
         })
       );
 
-      // Utilisateurs : visible uniquement pour ADMIN
       let users$ = of<User[]>([]);
       if (this.isAdmin) {
         users$ = this.userService.getUsers().pipe(
@@ -192,11 +336,17 @@ export class DashboardComponent implements OnInit, OnDestroy {
           const safeInternes = interventionsInternes || [];
           const safeUsers = users || [];
 
+          // ===== TOUTES LES INTERVENTIONS POUR LES FILTRES =====
+          const toutesInterventions = [...safeExternes, ...safeInternes];
+          this.allInterventions = toutesInterventions.map(i => this.formaterIntervention(i));
+          
+          // Appliquer les filtres
+          this.applyFilters();
+
           // ===== STATISTIQUES =====
           this.stats.totalClients = safeClients.length;
           this.stats.totalUsers = safeUsers.length;
           
-          // ===== FILTRAGE POUR TECHNICIEN =====
           let externesFiltrees = safeExternes;
           let internesFiltrees = safeInternes;
           
@@ -214,6 +364,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
           this.stats.totalInterventionsExternes = safeExternes.length;
           this.stats.totalInterventionsInternes = safeInternes.length;
           this.stats.totalMesInterventions = externesFiltrees.length + internesFiltrees.length;
+
+          // ===== CALCUL DE LA RENTABILITÉ =====
+          const toutesFiltrees = [...externesFiltrees, ...internesFiltrees];
+          this.calculerRentabilite(toutesFiltrees.map(i => this.formaterIntervention(i)));
 
           // ===== INTERVENTIONS EXTERNES =====
           this.recentInterventionsExternes = externesFiltrees
@@ -247,7 +401,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
               .slice(0, 10);
           }
 
-          // ===== UTILISATEURS (pour ADMIN) =====
           if (this.isAdmin) {
             this.users = safeUsers;
           }
